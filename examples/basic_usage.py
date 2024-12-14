@@ -1,4 +1,4 @@
-from chunking_experiment import ChunkingExperiment, ChunkingStrategy
+from chunking_experiment.core import ChunkingExperiment, ChunkingStrategy
 def main():
 # Example usage of the ChunkingExperiment class
     experiment = ChunkingExperiment(
@@ -9,5 +9,5 @@ def main():
     )
 # Show results
     print("Processing complete! Check output files.")
-if name == "main":
+if __name__ == "__main__":
     main()
