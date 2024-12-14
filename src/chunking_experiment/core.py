@@ -1,21 +1,9 @@
-import argparse
 from enum import Enum
 import logging
-
-
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--input", type=str, required=True)
-parser.add_argument("--output", type=str, required=True)
-parser.add_argument("--n_chunks", type=int, default=1)
-parser.add_argument("--chunking_strategy", type=str, default="rows")
-parser.add_argument("--file_format", type=str, default="csv")
-args = parser.parse_args()
 
 class ChunkingStrategy(str, Enum):
     ROWS = "rows"
@@ -28,14 +16,7 @@ class FileFormat(str, Enum):
     JSON = "json"
     PARQUET = "parquet"
 
-def main():
-    cursor_experiment = ChunkingExperiment(args.input, args.output, args.file_format, args.n_chunks, args.chunking_strategy)
-    cursor_experiment.process_chunks(args.chunking_strategy)
-    
-if __name__ == "__main__":
-    main()
-    
-    
+
 class ChunkingExperiment:
     def __init__(self, input_file: str, output_file: str, file_format: FileFormat = FileFormat.CSV, 
                  auto_run: bool = True, n_chunks: int = 1, chunking_strategy: str = "rows"):

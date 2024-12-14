@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from src.chunking_experiment.chunking_experiment import ChunkingExperiment, ChunkingStrategy, FileFormat
+from chunking_experiment.core import ChunkingExperiment, ChunkingStrategy, FileFormat
 
 @pytest.fixture
 def sample_data():
@@ -120,7 +120,7 @@ def test_no_chunks(test_files, tmp_path):
     experiment = ChunkingExperiment(
         str(test_files['csv']),
         str(output_file),
-        chunking_strategy="no_chunks"
+        chunking_strategy="None"
     )
     
     # Should only create one output file
