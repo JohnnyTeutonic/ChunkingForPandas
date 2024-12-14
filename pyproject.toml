@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chunking_experiment"
+version = "0.1.0"
+authors = [
+  { name="Jonathan Reich", email="jonathanreich100@gmail.com" },
+]
+description = "A package for experimenting with different data chunking strategies"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas>=1.5.0",
+    "gradio>=3.0.0",
+    "pytest>=7.0.0",
+    "pyarrow>=7.0.0",  # for parquet support
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "isort>=5.0.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/JohnnyTeutonic/chunking_experiment"
+"Bug Tracker" = "https://github.com/JohnnyTeutonic/chunking_experiment/issues" 
