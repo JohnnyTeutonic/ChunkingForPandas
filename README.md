@@ -29,16 +29,6 @@ chunking_strategy="rows"
 )
 ```
 
-## Create an Experiment
-
-experiment = ChunkingExperiment(
-    input_file="input.csv",
-    output_file="output.csv",
-    n_chunks=3,
-    chunking_strategy="rows"
-)
-
-
 ## Run the web interface
 
 ```python
