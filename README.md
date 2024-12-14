@@ -2,6 +2,13 @@
 
 A Python package for experimenting with different data chunking strategies.
 
+## Requirements
+
+- Python 3.10+
+- Gradio
+- pandas
+- pytest
+
 ## Installation
 
 ```bash
