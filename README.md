@@ -4,7 +4,7 @@
 [![Tests](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml/badge.svg)](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml)
 
 A Python package to chunk pandas/numpy data with different chunking strategies.
-Pypi package found here: https://pypi.org/project/chunking-pandas/
+PyPI package found here: https://pypi.org/project/chunking-pandas/
 
 ## Requirements
 
