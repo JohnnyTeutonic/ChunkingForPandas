@@ -6,7 +6,7 @@ import logging
 import timeit
 import pandas as pd
 import numpy as np
-from chunking_experiment import setup_logging, ChunkingExperiment, ChunkingStrategy
+from chunking_pandas import setup_logging, ChunkingExperiment, ChunkingStrategy
 
 setup_logging()
 

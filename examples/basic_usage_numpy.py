@@ -1,5 +1,5 @@
 import numpy as np
-from chunking_experiment import ChunkingExperiment, FileFormat, ChunkingStrategy
+from chunking_pandas import ChunkingExperiment, FileFormat, ChunkingStrategy
 
 # Create a sample array
 arr = np.random.rand(100, 100)

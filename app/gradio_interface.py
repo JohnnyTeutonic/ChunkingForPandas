@@ -10,7 +10,7 @@ project_root = str(Path(__file__).parent.parent.absolute())
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from chunking_experiment import ChunkingExperiment, FileFormat
+from chunking_pandas import ChunkingExperiment, FileFormat
 
 def get_sample_data_path() -> Path:
     """Get the absolute path to sample data, checking multiple possible locations."""
@@ -62,7 +62,8 @@ def process_file(
             output_filename,
             file_format=FileFormat(file_format),
             n_chunks=n_chunks,
-            chunking_strategy=chunking_strategy
+            chunking_strategy=chunking_strategy,
+            save_chunks=True
         )
         
         # Get output file paths

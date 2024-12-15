@@ -3,10 +3,10 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../src'))
 
-project = 'Chunking Experiment'
+project = 'Chunking for Pandas'
 copyright = '2024, Jonathan Reich'
 author = 'Jonathan Reich'
-release = '0.1.0'
+release = '0.1.2'
 
 # Extensions
 extensions = [

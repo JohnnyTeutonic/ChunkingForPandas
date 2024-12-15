@@ -22,6 +22,6 @@ Installing from source
 
 .. code-block:: bash
 
-   git clone https://github.com/JohnnyTeutonic/chunking-experiment.git
+   git clone https://github.com/JohnnyTeutonic/ChunkingForPandas.git
    cd chunking-experiment
    pip install -e . 

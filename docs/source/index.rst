@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Chunking Experiment's documentation!
-============================================
+Welcome to Chunking for Pandas' documentation!
+==============================================
 
 A Python package for experimenting with different data chunking strategies.
 

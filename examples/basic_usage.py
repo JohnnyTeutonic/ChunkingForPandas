@@ -1,11 +1,12 @@
-from chunking_experiment.core import ChunkingExperiment, ChunkingStrategy
+from chunking_pandas.core import ChunkingExperiment
 def main():
 # Example usage of the ChunkingExperiment class
     experiment = ChunkingExperiment(
-    "sample.csv",
+    "tests/data/sample.csv",
     "output.csv",
     n_chunks=3,
-    chunking_strategy="rows"
+    chunking_strategy="rows",
+    save_chunks=True
     )
 # Show results
     print("Processing complete! Check output files.")

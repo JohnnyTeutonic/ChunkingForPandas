@@ -28,7 +28,7 @@ make install
 ## Usage
 
 ```python
-from chunking_experiment import ChunkingExperiment
+from chunking_pandas import ChunkingExperiment
 ```
 
 ## Create an instance of a Chunking class

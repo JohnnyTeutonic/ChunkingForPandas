@@ -30,7 +30,7 @@ docs-clean:
 	$(MAKE) -C $(DOCS_DIR) clean
 
 docs-serve:
-	sphinx-autobuild $(DOCS_DIR) $(DOCS_DIR)/build/html
+	sphinx-autobuild $(DOCS_DIR)/source $(DOCS_DIR)/build/html
 
 # Run ruff linter
 lint:
