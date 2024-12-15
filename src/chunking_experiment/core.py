@@ -4,7 +4,9 @@ import pandas as pd
 import numpy as np
 from typing import Union, List
 
-logging.basicConfig(level=logging.INFO)
+from .utils.logging import setup_logging
+setup_logging()
+
 logger = logging.getLogger(__name__)
 
 class ChunkingStrategy(str, Enum):
@@ -23,8 +25,9 @@ class FileFormat(str, Enum):
 class ChunkingExperiment:
     def __init__(self, input_file: str, output_file: str, 
                  file_format: FileFormat = FileFormat.CSV, 
-                 auto_run: bool = True, n_chunks: int = 1, 
-                 chunking_strategy: str = "rows"):
+                 auto_run: bool = True, n_chunks: int = 4, 
+                 chunking_strategy: str = "rows",
+                 save_chunks: bool = False):
         """Initialize ChunkingExperiment with specified file format.
         
         Args:
@@ -34,8 +37,14 @@ class ChunkingExperiment:
             auto_run: Whether to automatically run processing
             n_chunks: Number of chunks to split the data into
             chunking_strategy: Strategy to use for chunking data
+            save_chunks: Whether to save chunks to disk (default: True)
         """
         self.file_format = file_format
+        self.save_chunks = save_chunks
+        
+        if not save_chunks:
+            logger.warning("Chunks will not be saved to disk as save_chunks=False")
+        
         match file_format:
             case FileFormat.CSV:
                 self.input_file = input_file
@@ -101,7 +110,7 @@ class ChunkingExperiment:
                 raise ValueError(f"Unsupported chunking strategy for NumPy arrays: {strategy}")
 
     def process_chunks(self, strategy: ChunkingStrategy) -> Union[List[pd.DataFrame], List[np.ndarray]]:
-        """Process input data into chunks and save them to output files.
+        """Process input data into chunks and optionally save them to output files.
         
         Args:
             strategy: ChunkingStrategy enum specifying how to split the data
@@ -133,11 +142,12 @@ class ChunkingExperiment:
 
         if is_numpy:
             chunks = self._chunk_numpy_array(df, strategy)
-            # Save NumPy chunks
-            for i, chunk in enumerate(chunks):
-                chunk_filename = f"{output_base}_chunk_{i+1}.npy"
-                np.save(chunk_filename, chunk)
-                logger.info(f"Saved NumPy chunk {i+1} to {chunk_filename}")
+            # Save NumPy chunks only if save_chunks is True
+            if self.save_chunks:
+                for i, chunk in enumerate(chunks):
+                    chunk_filename = f"{output_base}_chunk_{i+1}.npy"
+                    np.save(chunk_filename, chunk)
+                    logger.info(f"Saved NumPy chunk {i+1} to {chunk_filename}")
             return chunks
 
         # Process pandas DataFrame chunks
@@ -187,10 +197,11 @@ class ChunkingExperiment:
             case _:
                 raise ValueError(f"Unknown chunking strategy: {strategy}")
 
-        # Save pandas DataFrame chunks
-        for i, chunk in enumerate(chunks):
-            chunk_filename = f"{output_base}_chunk_{i+1}.{output_ext}"
-            chunk.to_csv(chunk_filename, index=False)
-            logger.info(f"Saved chunk {i+1} to {chunk_filename}")
+        # Save pandas DataFrame chunks only if save_chunks is True
+        if self.save_chunks:
+            for i, chunk in enumerate(chunks):
+                chunk_filename = f"{output_base}_chunk_{i+1}.{output_ext}"
+                chunk.to_csv(chunk_filename, index=False)
+                logger.info(f"Saved chunk {i+1} to {chunk_filename}")
 
         return chunks

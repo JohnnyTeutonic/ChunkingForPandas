@@ -1,4 +1,4 @@
-.PHONY: lint typecheck test run clean
+.PHONY: lint typecheck test run clean docs docs-clean docs-serve benchmark
 
 # Python interpreter to use
 PYTHON := python3
@@ -12,9 +12,18 @@ DOCS_DIR := docs
 install:
 	pip install -e ".[dev]"
 
+install-docs:
+	pip install -e ".[docs]"
+
+benchmark:
+	$(PYTHON) benchmarks/benchmark_chunking.py
+
 # Generate documentation
 docs:
-	$(MAKE) -C $(DOCS_DIR) html
+	sphinx-build $(DOCS_DIR)/source $(DOCS_DIR)/build/html
+
+docs-clean:
+	$(MAKE) -C $(DOCS_DIR) clean
 
 docs-serve:
 	sphinx-autobuild $(DOCS_DIR) $(DOCS_DIR)/build/html

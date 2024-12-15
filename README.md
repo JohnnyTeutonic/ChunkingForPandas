@@ -58,6 +58,7 @@ python gradio_interface.py
 - Web interface using Gradio
 - Comprehensive test suite
 - Documentation using Sphinx
+- Benchmarking the chunking strategies
 
 ## Development
 

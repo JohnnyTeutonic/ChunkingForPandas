@@ -31,11 +31,12 @@ def test_files(sample_data, tmp_path):
 def test_row_chunking(test_files, tmp_path):
     """Test row-based chunking strategy."""
     output_file = tmp_path / "output.csv"
-    experiment = ChunkingExperiment(
+    ChunkingExperiment(
         str(test_files['csv']),
         str(output_file),
         n_chunks=4,
-        chunking_strategy="rows"
+        chunking_strategy="rows",
+        save_chunks=True
     )
     
     # Check if output files exist
@@ -50,11 +51,13 @@ def test_row_chunking(test_files, tmp_path):
 def test_column_chunking(test_files, tmp_path):
     """Test column-based chunking strategy."""
     output_file = tmp_path / "output.csv"
-    experiment = ChunkingExperiment(
+    ChunkingExperiment(
         str(test_files['csv']),
         str(output_file),
         n_chunks=3,
-        chunking_strategy="columns"
+        chunking_strategy="columns",
+        save_chunks=True
+
     )
     
     # Check if output files exist and have correct number of columns
@@ -68,11 +71,12 @@ def test_column_chunking(test_files, tmp_path):
 def test_token_chunking(test_files, tmp_path):
     """Test token-based chunking strategy."""
     output_file = tmp_path / "output.csv"
-    experiment = ChunkingExperiment(
+    ChunkingExperiment(
         str(test_files['csv']),
         str(output_file),
         n_chunks=2,
-        chunking_strategy="tokens"
+        chunking_strategy="tokens",
+        save_chunks=True
     )
     
     # Check if output files exist
@@ -85,12 +89,13 @@ def test_file_formats(test_files, tmp_path):
     for format_type, input_file in test_files.items():
         output_file = tmp_path / f"output_{format_type}.csv"
         
-        experiment = ChunkingExperiment(
+        ChunkingExperiment(
             str(input_file),
             str(output_file),
             file_format=FileFormat(format_type),
             n_chunks=2,
-            chunking_strategy="rows"
+            chunking_strategy="rows",
+            save_chunks=True
         )
         
         # Check if output files exist for each format
@@ -117,10 +122,11 @@ def test_invalid_inputs():
 def test_no_chunks(test_files, tmp_path):
     """Test NO_CHUNKS strategy."""
     output_file = tmp_path / "output.csv"
-    experiment = ChunkingExperiment(
+    ChunkingExperiment(
         str(test_files['csv']),
         str(output_file),
-        chunking_strategy="None"
+        chunking_strategy="None",
+        save_chunks=True
     )
     
     # Should only create one output file
