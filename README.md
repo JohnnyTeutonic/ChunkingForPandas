@@ -38,9 +38,17 @@ chunking_strategy="rows"
 
 ## Run the web interface
 
+Go to the app folder and run the following command:
+
 ```python
-from chunking_experiment.interface import launch_interface
+from gradio_interface import launch_interface
 launch_interface()
+```
+
+Alternatively, you can run the following command to start the web interface:
+
+```bash
+python gradio_interface.py
 ```
 
 ## Features
@@ -62,4 +70,13 @@ To run tests:
 
 ```bash
 pytest
+```
+
+Additional commands run from the root folder:
+
+```bash
+make lint
+make typecheck
+make test
+make clean
 ```
