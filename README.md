@@ -1,6 +1,6 @@
 # Chunking for Pandas
 
-[![codecov](https://codecov.io/gh/JohnnyTeutonic/ChunkingForPandas/branch/main/graph/badge.svg)](https://codecov.io/gh/JohnnyTeutonic/chunking_experiment)
+[![codecov](https://codecov.io/gh/JohnnyTeutonic/ChunkingForPandas/branch/main/graph/badge.svg)](https://codecov.io/gh/JohnnyTeutonic/ChunkingForPandas)
 [![Tests](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml/badge.svg)](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml)
 
 A Python package to chunk pandas/numpy data with different chunking strategies.
