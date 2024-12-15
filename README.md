@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/JohnnyTeutonic/chunking_experiment/branch/main/graph/badge.svg?token=00000000-0000-0000-0000-000000000000)](https://codecov.io/gh/JohnnyTeutonic/chunking_experiment)
 [![Tests](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml/badge.svg)](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml)
 
-A Python package for experimenting with different data chunking strategies.
+A Python package to chunk pandas/numpy data with different chunking strategies.
 
 ## Requirements
 
@@ -19,21 +19,33 @@ A Python package for experimenting with different data chunking strategies.
 pip install chunking-experiment
 ```
 
+Or:
+
+```bash
+make install
+```
+
 ## Usage
 
 ```python
-from chunking_experiment import ChunkingExperiment, ChunkingStrategy, FileFormat
+from chunking_experiment import ChunkingExperiment
 ```
 
 ## Create an instance of a Chunking class
 
 ```python
-experiment = ChunkingExperiment(
+class_instance = ChunkingExperiment(
 "input.csv",
 "output.csv",
 n_chunks=3,
 chunking_strategy="rows"
 )
+```
+
+Then perform the chunking:
+
+```python
+class_instance.process_chunks()
 ```
 
 ## Run the web interface
@@ -68,6 +80,12 @@ To install development dependencies:
 pip install -e .[dev]
 ```
 
+Or:
+
+```bash
+make install-dev
+```
+
 ## Testing
 
 To run tests, run the following command from the root folder:
@@ -84,6 +102,12 @@ To install the documentation dependencies:
 pip install -e .[docs]
 ```
 
+Or:
+
+```bash
+make install-docs
+```
+
 To build the documentation:
 
 ```bash
@@ -96,15 +120,20 @@ To serve the documentation:
 make docs-serve
 ```
 
-Below are the commands that can be run from the root folder:
+Below are the full list of commands that can be run from the root folder:
 
 ```bash
-make lint
-make typecheck
-make test
+make benchmark
 make clean
 make docs
+make docs-clean
 make docs-serve
+make install
+make install-docs
+make lint
+make run
+make test
+make typecheck
 ```
 
 ## License

@@ -9,7 +9,11 @@ TEST_DIR := tests
 
 DOCS_DIR := docs
 # Install dependencies
-install:
+
+make install:
+	pip install -e .
+	
+install-dev:
 	pip install -e ".[dev]"
 
 install-docs:
