@@ -1,5 +1,8 @@
 # Chunking Experiment
 
+[![Tests](https://github.com/JohnnyTeutonic/chunking-experiment/actions/workflows/test.yml/badge.svg)](https://github.com/JohnnyTeutonic/chunking-experiment/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/JohnnyTeutonic/chunking_experiment/branch/main/graph/badge.svg?token=00000000-0000-0000-0000-000000000000)](https://codecov.io/gh/JohnnyTeutonic/chunking_experiment)
+
 A Python package for experimenting with different data chunking strategies.
 
 ## Requirements
