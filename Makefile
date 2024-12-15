@@ -47,7 +47,7 @@ test:
 
 # Run the Gradio app
 run:
-	$(PYTHON) -m chunking_experiment.gradio_interface
+	$(PYTHON) -m chunking_pandas.gradio_interface
 
 # Clean up Python cache files and build artifacts
 clean:
