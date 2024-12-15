@@ -16,7 +16,7 @@ A Python package to chunk pandas/numpy data with different chunking strategies.
 ## Installation
 
 ```bash
-pip install chunking-experiment
+pip install chunking-pandas
 ```
 
 Or:
