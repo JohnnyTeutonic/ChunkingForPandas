@@ -1,4 +1,4 @@
-# Chunking Experiment
+# Chunking for Pandas
 
 [![codecov](https://codecov.io/gh/JohnnyTeutonic/ChunkingForPandas/branch/main/graph/badge.svg)](https://codecov.io/gh/JohnnyTeutonic/chunking_experiment)
 [![Tests](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml/badge.svg)](https://github.com/JohnnyTeutonic/ChunkingForPandas/actions/workflows/test.yml)
