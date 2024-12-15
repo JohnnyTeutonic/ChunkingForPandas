@@ -69,7 +69,7 @@ pip install -e .[dev]
 
 ## Testing
 
-To run tests:
+To run tests, run the following command from the root folder:
 
 ```bash
 pytest
