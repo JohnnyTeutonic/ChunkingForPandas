@@ -1,6 +1,8 @@
 from enum import Enum
 import logging
 import pandas as pd
+import numpy as np
+from typing import Union, List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,21 +18,24 @@ class FileFormat(str, Enum):
     CSV = "csv"
     JSON = "json"
     PARQUET = "parquet"
-
+    NUMPY = "numpy"
 
 class ChunkingExperiment:
-    def __init__(self, input_file: str, output_file: str, file_format: FileFormat = FileFormat.CSV, 
-                 auto_run: bool = True, n_chunks: int = 1, chunking_strategy: str = "rows"):
-        """Initialize CursorExperiment with specified file format.
+    def __init__(self, input_file: str, output_file: str, 
+                 file_format: FileFormat = FileFormat.CSV, 
+                 auto_run: bool = True, n_chunks: int = 1, 
+                 chunking_strategy: str = "rows"):
+        """Initialize ChunkingExperiment with specified file format.
         
         Args:
-            input_file: Path to input file
+            input_file: Path to input file or NumPy array
             output_file: Path to output file base name
             file_format: FileFormat enum specifying input file type
             auto_run: Whether to automatically run processing
             n_chunks: Number of chunks to split the data into
             chunking_strategy: Strategy to use for chunking data
         """
+        self.file_format = file_format
         match file_format:
             case FileFormat.CSV:
                 self.input_file = input_file
@@ -47,6 +52,12 @@ class ChunkingExperiment:
                     raise ValueError(f"Input file must be a parquet file, got: {input_file}")
                 self.input_file = input_file
                 self.output_file = output_file
+            case FileFormat.NUMPY:
+                if not input_file.endswith('.npy'):
+                    logger.error(f"Input file must be a NumPy file, got: {input_file}")
+                    raise ValueError(f"Input file must be a NumPy file, got: {input_file}")
+                self.input_file = input_file
+                self.output_file = output_file
             case _:
                 logger.error(f"Unsupported file format: {file_format}")
                 raise ValueError(f"Unsupported file format: {file_format}")
@@ -56,24 +67,63 @@ class ChunkingExperiment:
         if auto_run:
             self.process_chunks(ChunkingStrategy(chunking_strategy))
     
-    def process_chunks(self, strategy: ChunkingStrategy) -> list[pd.DataFrame]:
+    def _chunk_numpy_array(self, arr: np.ndarray, strategy: ChunkingStrategy) -> List[np.ndarray]:
+        """Helper method to chunk NumPy arrays."""
+        match strategy:
+            case ChunkingStrategy.ROWS:
+                chunk_size = arr.shape[0] // self.n_chunks
+                return [arr[i:i + chunk_size] for i in range(0, arr.shape[0], chunk_size)]
+                
+            case ChunkingStrategy.COLUMNS:
+                if arr.ndim < 2:
+                    raise ValueError("Cannot chunk 1D array by columns")
+                chunk_size = arr.shape[1] // self.n_chunks
+                return [arr[:, i:i + chunk_size] for i in range(0, arr.shape[1], chunk_size)]
+                
+            case ChunkingStrategy.BLOCKS:
+                if arr.ndim < 2:
+                    raise ValueError("Cannot chunk 1D array into blocks")
+                rows, cols = arr.shape
+                block_rows = int(rows ** 0.5)
+                block_cols = int(cols ** 0.5)
+                chunks = []
+                for i in range(0, rows, block_rows):
+                    for j in range(0, cols, block_cols):
+                        block = arr[i:min(i + block_rows, rows), 
+                                  j:min(j + block_cols, cols)]
+                        chunks.append(block)
+                return chunks
+                
+            case ChunkingStrategy.NO_CHUNKS:
+                return [arr]
+                
+            case _:
+                raise ValueError(f"Unsupported chunking strategy for NumPy arrays: {strategy}")
+
+    def process_chunks(self, strategy: ChunkingStrategy) -> Union[List[pd.DataFrame], List[np.ndarray]]:
         """Process input data into chunks and save them to output files.
         
         Args:
             strategy: ChunkingStrategy enum specifying how to split the data
             
         Returns:
-            List of pandas DataFrames representing the chunks
+            List of pandas DataFrames or NumPy arrays representing the chunks
         """
         # Read the input file
         file_extension = self.input_file.split('.')[-1].lower()
         match file_extension:
             case "csv":
                 df = pd.read_csv(self.input_file)
+                is_numpy = False
             case "json":
                 df = pd.read_json(self.input_file)
+                is_numpy = False
             case "parquet":
                 df = pd.read_parquet(self.input_file)
+                is_numpy = False
+            case "npy":
+                df = np.load(self.input_file)
+                is_numpy = True
             case _:
                 raise ValueError(f"Unsupported file extension: {file_extension}")
 
@@ -81,23 +131,28 @@ class ChunkingExperiment:
         output_base = self.output_file.rsplit('.', 1)[0]
         output_ext = self.output_file.rsplit('.', 1)[1]
 
+        if is_numpy:
+            chunks = self._chunk_numpy_array(df, strategy)
+            # Save NumPy chunks
+            for i, chunk in enumerate(chunks):
+                chunk_filename = f"{output_base}_chunk_{i+1}.npy"
+                np.save(chunk_filename, chunk)
+                logger.info(f"Saved NumPy chunk {i+1} to {chunk_filename}")
+            return chunks
+
+        # Process pandas DataFrame chunks
         chunks = []
         match strategy:
             case ChunkingStrategy.ROWS:
-                # Split into even-sized chunks by rows
                 chunk_size = len(df) // self.n_chunks
                 chunks = [df.iloc[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
                 
             case ChunkingStrategy.COLUMNS:
-                # Split into even-sized chunks by columns
                 chunk_size = len(df.columns) // self.n_chunks
                 chunks = [df.iloc[:, i:i + chunk_size] for i in range(0, len(df.columns), chunk_size)]
                 
             case ChunkingStrategy.TOKENS:
-                # Calculate token counts for each row
-                token_counts = df.astype(str).apply(
-                    lambda x: x.str.len().sum(), axis=1
-                )
+                token_counts = df.astype(str).apply(lambda x: x.str.len().sum(), axis=1)
                 total_tokens = token_counts.sum()
                 tokens_per_chunk = total_tokens // self.n_chunks
                 
@@ -111,20 +166,15 @@ class ChunkingExperiment:
                         current_chunk_start = idx + 1
                         current_token_count = 0
                 
-                # Add remaining rows to last chunk
                 if current_chunk_start < len(df):
                     chunks.append(df.iloc[current_chunk_start:])
                 
             case ChunkingStrategy.BLOCKS:
-                # Split into fixed-size blocks based on both rows and columns
                 rows = len(df)
                 cols = len(df.columns)
-                
-                # Calculate block dimensions
                 block_rows = int(rows ** 0.5)
                 block_cols = int(cols ** 0.5)
                 
-                # Create blocks
                 for i in range(0, rows, block_rows):
                     for j in range(0, cols, block_cols):
                         block = df.iloc[i:min(i + block_rows, rows), 
@@ -137,12 +187,10 @@ class ChunkingExperiment:
             case _:
                 raise ValueError(f"Unknown chunking strategy: {strategy}")
 
-        # Save each chunk to a separate file
+        # Save pandas DataFrame chunks
         for i, chunk in enumerate(chunks):
             chunk_filename = f"{output_base}_chunk_{i+1}.{output_ext}"
             chunk.to_csv(chunk_filename, index=False)
             logger.info(f"Saved chunk {i+1} to {chunk_filename}")
 
         return chunks
-
-
