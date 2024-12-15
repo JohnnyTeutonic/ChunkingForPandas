@@ -11,6 +11,10 @@ TEST_DIR := tests
 install:
 	pip install -e ".[dev]"
 
+# Generate documentation
+docs:
+	$(MAKE) -C docs html
+
 # Run ruff linter
 lint:
 	ruff check $(SRC_DIR)
