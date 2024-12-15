@@ -67,6 +67,8 @@ To install development dependencies:
 pip install -e .[dev]
 ```
 
+## Testing
+
 To run tests:
 
 ```bash
@@ -74,6 +76,12 @@ pytest
 ```
 
 ## Documentation
+
+To install the documentation dependencies:
+
+```bash
+pip install -e .[docs]
+```
 
 To build the documentation:
 
