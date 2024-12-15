@@ -73,7 +73,21 @@ To run tests:
 pytest
 ```
 
-Additional commands to run from the root folder:
+## Documentation
+
+To build the documentation:
+
+```bash
+make docs
+```
+
+To serve the documentation:
+
+```bash
+make docs-serve
+```
+
+Below are the commands that can be run from the root folder:
 
 ```bash
 make lint
