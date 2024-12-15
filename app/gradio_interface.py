@@ -65,7 +65,7 @@ iface = gr.Interface(
             value="csv"
         ),
         gr.Radio(
-            choices=["rows", "columns", "tokens", "None"],
+            choices=["rows", "columns", "tokens", "blocks", "None"], 
             label="Chunking Strategy",
             value="rows"
         ),
@@ -89,7 +89,7 @@ iface = gr.Interface(
     """,
     examples=[
         [
-            "../../tests/data/sample.csv",
+            "../tests/data/sample.csv",
             "output.csv",
             "csv",
             "rows",

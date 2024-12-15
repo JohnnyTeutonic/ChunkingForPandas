@@ -9,6 +9,7 @@ class ChunkingStrategy(str, Enum):
     ROWS = "rows"
     COLUMNS = "columns"
     TOKENS = "tokens"
+    BLOCKS = "blocks"
     NO_CHUNKS = "None"
 
 class FileFormat(str, Enum):
@@ -113,6 +114,22 @@ class ChunkingExperiment:
                 # Add remaining rows to last chunk
                 if current_chunk_start < len(df):
                     chunks.append(df.iloc[current_chunk_start:])
+                
+            case ChunkingStrategy.BLOCKS:
+                # Split into fixed-size blocks based on both rows and columns
+                rows = len(df)
+                cols = len(df.columns)
+                
+                # Calculate block dimensions
+                block_rows = int(rows ** 0.5)
+                block_cols = int(cols ** 0.5)
+                
+                # Create blocks
+                for i in range(0, rows, block_rows):
+                    for j in range(0, cols, block_cols):
+                        block = df.iloc[i:min(i + block_rows, rows), 
+                                      j:min(j + block_cols, cols)]
+                        chunks.append(block)
                 
             case ChunkingStrategy.NO_CHUNKS:
                 chunks = [df]
