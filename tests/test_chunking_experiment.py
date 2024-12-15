@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from chunking_experiment.core import ChunkingExperiment, ChunkingStrategy, FileFormat
+from chunking_experiment.core import ChunkingExperiment, FileFormat
 
 @pytest.fixture
 def sample_data():
