@@ -79,6 +79,7 @@ make lint
 make typecheck
 make test
 make clean
+make docs
 ```
 
 ## License
