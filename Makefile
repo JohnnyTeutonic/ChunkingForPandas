@@ -7,13 +7,17 @@ SRC_DIR := src
 # Test directory
 TEST_DIR := tests
 
+DOCS_DIR := docs
 # Install dependencies
 install:
 	pip install -e ".[dev]"
 
 # Generate documentation
 docs:
-	$(MAKE) -C docs html
+	$(MAKE) -C $(DOCS_DIR) html
+
+docs-serve:
+	sphinx-autobuild $(DOCS_DIR) $(DOCS_DIR)/build/html
 
 # Run ruff linter
 lint:

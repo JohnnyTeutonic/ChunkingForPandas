@@ -57,6 +57,7 @@ python gradio_interface.py
 - Support for CSV, JSON, Numpy and Parquet files
 - Web interface using Gradio
 - Comprehensive test suite
+- Documentation using Sphinx
 
 ## Development
 
@@ -72,7 +73,7 @@ To run tests:
 pytest
 ```
 
-Additional commands run from the root folder:
+Additional commands to run from the root folder:
 
 ```bash
 make lint
@@ -80,6 +81,7 @@ make typecheck
 make test
 make clean
 make docs
+make docs-serve
 ```
 
 ## License
