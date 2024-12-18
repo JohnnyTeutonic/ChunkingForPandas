@@ -2,7 +2,7 @@ Usage
 =====
 
 Basic Usage
-----------
+-----------
 
 .. code-block:: python
 
@@ -17,7 +17,7 @@ Basic Usage
     )
 
 Web Interface
-------------
+-------------
 
 To run the web interface:
 
@@ -27,7 +27,7 @@ To run the web interface:
     launch_interface()
 
 Chunking Strategies
------------------
+-------------------
 
 The package supports several chunking strategies:
 
@@ -38,7 +38,7 @@ The package supports several chunking strategies:
 * **none**: Keep data as single chunk
 
 File Formats
------------
+------------
 
 Supported file formats:
 
