@@ -240,7 +240,7 @@ def test_numpy_invalid_strategies(test_files, tmp_path):
     with pytest.raises(ValueError):
         experiment.process_chunks(ChunkingStrategy.TOKENS)
 
-def test_file_format_extensions():
+def test_file_format_extensions(tmp_path):
     """Test all file format extensions."""
     format_extensions = {
         FileFormat.CSV: '.csv',
@@ -250,20 +250,28 @@ def test_file_format_extensions():
     }
     
     for format_type, extension in format_extensions.items():
+        # Create test file with uppercase extension
+        test_file = tmp_path / f"test{extension.upper()}"
+        test_file.touch()
+        
         # Test with uppercase extension
         experiment = ChunkingExperiment(
-            f"test{extension.upper()}",
-            "output.csv",
+            str(test_file),
+            str(tmp_path / f"output{extension}"),
             file_format=format_type,
             auto_run=False
         )
         assert experiment.input_file.endswith(extension.upper())
 
-def test_chunking_strategy_conversion():
+def test_chunking_strategy_conversion(tmp_path, sample_data):
     """Test conversion of string chunking strategy to enum."""
+    # Create a test CSV file
+    test_file = tmp_path / "test.csv"
+    sample_data.to_csv(test_file, index=False)
+    
     experiment = ChunkingExperiment(
-        "test.csv",
-        "output.csv",
+        str(test_file),
+        str(tmp_path / "output.csv"),
         chunking_strategy="rows",
         auto_run=False
     )
