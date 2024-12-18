@@ -40,5 +40,5 @@ docs = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/JohnnyTeutonic/chunking_experiment"
-"Bug Tracker" = "https://github.com/JohnnyTeutonic/chunking_experiment/issues" 
+"Homepage" = "https://github.com/JohnnyTeutonic/ChunkingForPandas"
+"Bug Tracker" = "https://github.com/JohnnyTeutonic/ChunkingForPandas/issues" 
