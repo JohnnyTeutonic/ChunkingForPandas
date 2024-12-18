@@ -6,7 +6,7 @@ Basic Usage
 
 .. code-block:: python
 
-    from chunking_experiment import ChunkingExperiment, ChunkingStrategy, FileFormat
+    from chunking_pandas.core import ChunkingExperiment, ChunkingStrategy, FileFormat
 
     # Create an experiment
     experiment = ChunkingExperiment(
@@ -23,7 +23,7 @@ To run the web interface:
 
 .. code-block:: python
 
-    from chunking_experiment.gradio_interface import launch_interface
+    from chunking_pandas.gradio_interface import launch_interface
     launch_interface()
 
 Chunking Strategies

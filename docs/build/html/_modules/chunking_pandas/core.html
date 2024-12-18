@@ -75,7 +75,10 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">Pool</span><span class="p">,</span> <span class="n">cpu_count</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">from</span> <span class="nn">.utils.logging</span> <span class="kn">import</span> <span class="n">setup_logging</span>
 <span class="n">setup_logging</span><span class="p">()</span>
@@ -89,7 +92,10 @@
     <span class="n">COLUMNS</span> <span class="o">=</span> <span class="s2">&quot;columns&quot;</span>
     <span class="n">TOKENS</span> <span class="o">=</span> <span class="s2">&quot;tokens&quot;</span>
     <span class="n">BLOCKS</span> <span class="o">=</span> <span class="s2">&quot;blocks&quot;</span>
-    <span class="n">NO_CHUNKS</span> <span class="o">=</span> <span class="s2">&quot;None&quot;</span></div>
+    <span class="n">NO_CHUNKS</span> <span class="o">=</span> <span class="s2">&quot;None&quot;</span>
+    <span class="n">PARALLEL_ROWS</span> <span class="o">=</span> <span class="s2">&quot;parallel_rows&quot;</span>
+    <span class="n">PARALLEL_BLOCKS</span> <span class="o">=</span> <span class="s2">&quot;parallel_blocks&quot;</span>
+    <span class="n">DYNAMIC</span> <span class="o">=</span> <span class="s2">&quot;dynamic&quot;</span></div>
 
 
 <div class="viewcode-block" id="FileFormat">
@@ -108,24 +114,24 @@
                  <span class="n">file_format</span><span class="p">:</span> <span class="n">FileFormat</span> <span class="o">=</span> <span class="n">FileFormat</span><span class="o">.</span><span class="n">CSV</span><span class="p">,</span> 
                  <span class="n">auto_run</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">n_chunks</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> 
                  <span class="n">chunking_strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;rows&quot;</span><span class="p">,</span>
-                 <span class="n">save_chunks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize ChunkingExperiment with specified file format.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            input_file: Path to input file or NumPy array</span>
-<span class="sd">            output_file: Path to output file base name</span>
-<span class="sd">            file_format: FileFormat enum specifying input file type</span>
-<span class="sd">            auto_run: Whether to automatically run processing</span>
-<span class="sd">            n_chunks: Number of chunks to split the data into</span>
-<span class="sd">            chunking_strategy: Strategy to use for chunking data</span>
-<span class="sd">            save_chunks: Whether to save chunks to disk (default: True)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+                 <span class="n">save_chunks</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                 <span class="n">n_workers</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize ChunkingExperiment with specified file format.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">n_workers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">n_workers</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Number of workers must be positive&quot;</span><span class="p">)</span>
+            
         <span class="bp">self</span><span class="o">.</span><span class="n">file_format</span> <span class="o">=</span> <span class="n">file_format</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">save_chunks</span> <span class="o">=</span> <span class="n">save_chunks</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">output_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span> <span class="o">=</span> <span class="n">n_workers</span> <span class="ow">or</span> <span class="n">cpu_count</span><span class="p">()</span>
         
         <span class="k">if</span> <span class="ow">not</span> <span class="n">save_chunks</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Chunks will not be saved to disk as save_chunks=False&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Check if input file exists</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">input_file</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input file does not exist: </span><span class="si">{</span><span class="n">input_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input file does not exist: </span><span class="si">{</span><span class="n">input_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         
         <span class="c1"># Map file formats to their expected extensions</span>
         <span class="n">format_extensions</span> <span class="o">=</span> <span class="p">{</span>
@@ -141,12 +147,73 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Input file must be a </span><span class="si">{</span><span class="n">expected_ext</span><span class="si">}</span><span class="s2"> file, got: </span><span class="si">{</span><span class="n">input_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         
         <span class="bp">self</span><span class="o">.</span><span class="n">input_file</span> <span class="o">=</span> <span class="n">input_file</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_chunks</span><span class="p">)</span>  <span class="c1"># Ensure at least 1 chunk</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_chunks</span><span class="p">)</span>
         
         <span class="k">if</span> <span class="n">auto_run</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">process_chunks</span><span class="p">(</span><span class="n">ChunkingStrategy</span><span class="p">(</span><span class="n">chunking_strategy</span><span class="p">))</span>
-    
+
+    <span class="k">def</span> <span class="nf">_read_input_file</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read input file based on file format.&quot;&quot;&quot;</span>
+        <span class="n">file_extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">match</span> <span class="n">file_extension</span><span class="p">:</span>
+            <span class="k">case</span> <span class="s2">&quot;csv&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;json&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;parquet&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
+            <span class="k">case</span> <span class="s2">&quot;npy&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported file extension: </span><span class="si">{</span><span class="n">file_extension</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_process_chunk_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunk_data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process a single chunk in parallel.&quot;&quot;&quot;</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">start_idx</span><span class="p">,</span> <span class="n">end_idx</span> <span class="o">=</span> <span class="n">chunk_data</span>
+        <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="k">else</span> <span class="n">data</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_process_block_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">block_data</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process a single block in parallel.&quot;&quot;&quot;</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">start_row</span><span class="p">,</span> <span class="n">end_row</span><span class="p">,</span> <span class="n">start_col</span><span class="p">,</span> <span class="n">end_col</span> <span class="o">=</span> <span class="n">block_data</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_row</span><span class="p">:</span><span class="n">end_row</span><span class="p">,</span> <span class="n">start_col</span><span class="p">:</span><span class="n">end_col</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="n">start_row</span><span class="p">:</span><span class="n">end_row</span><span class="p">,</span> <span class="n">start_col</span><span class="p">:</span><span class="n">end_col</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_chunk_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">ChunkingStrategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parallel chunking implementation.&quot;&quot;&quot;</span>
+        <span class="n">total_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">total_size</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">PARALLEL_ROWS</span><span class="p">:</span>
+            <span class="n">chunk_args</span> <span class="o">=</span> <span class="p">[(</span><span class="n">data</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="n">total_size</span><span class="p">))</span> 
+                         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">)]</span>
+            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_chunk_parallel</span><span class="p">,</span> <span class="n">chunk_args</span><span class="p">)</span>
+        
+        <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">PARALLEL_BLOCKS</span><span class="p">:</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">block_rows</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">rows</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">))</span>
+            <span class="n">block_cols</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">cols</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">))</span>
+            
+            <span class="n">block_args</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">block_rows</span><span class="p">,</span> <span class="n">rows</span><span class="p">),</span> <span class="n">j</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="n">block_cols</span><span class="p">,</span> <span class="n">cols</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">block_rows</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">block_cols</span><span class="p">)</span>
+            <span class="p">]</span>
+            
+            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_block_parallel</span><span class="p">,</span> <span class="n">block_args</span><span class="p">)</span>
+        
+        <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">DYNAMIC</span><span class="p">:</span>
+            <span class="c1"># Dynamic chunking based on data size and available CPU cores</span>
+            <span class="n">optimal_chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">total_size</span> <span class="o">//</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span> <span class="o">*</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">chunk_args</span> <span class="o">=</span> <span class="p">[(</span><span class="n">data</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">optimal_chunk_size</span><span class="p">,</span> <span class="n">total_size</span><span class="p">))</span>
+                         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_size</span><span class="p">,</span> <span class="n">optimal_chunk_size</span><span class="p">)]</span>
+            
+            <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">pool</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pool</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_chunk_parallel</span><span class="p">,</span> <span class="n">chunk_args</span><span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">_chunk_numpy_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">ChunkingStrategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Helper method to chunk NumPy arrays.&quot;&quot;&quot;</span>
         <span class="k">match</span> <span class="n">strategy</span><span class="p">:</span>
@@ -183,101 +250,90 @@
 <div class="viewcode-block" id="ChunkingExperiment.process_chunks">
 <a class="viewcode-back" href="../../api.html#chunking_pandas.core.ChunkingExperiment.process_chunks">[docs]</a>
     <span class="k">def</span> <span class="nf">process_chunks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">ChunkingStrategy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process input data into chunks and optionally save them to output files.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            strategy: ChunkingStrategy enum specifying how to split the data</span>
-<span class="sd">            </span>
-<span class="sd">        Returns:</span>
-<span class="sd">            List of pandas DataFrames or NumPy arrays representing the chunks</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Read the input file</span>
-        <span class="n">file_extension</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="k">match</span> <span class="n">file_extension</span><span class="p">:</span>
-            <span class="k">case</span> <span class="s2">&quot;csv&quot;</span><span class="p">:</span>
-                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
-                <span class="n">is_numpy</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">case</span> <span class="s2">&quot;json&quot;</span><span class="p">:</span>
-                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
-                <span class="n">is_numpy</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">case</span> <span class="s2">&quot;parquet&quot;</span><span class="p">:</span>
-                <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
-                <span class="n">is_numpy</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">case</span> <span class="s2">&quot;npy&quot;</span><span class="p">:</span>
-                <span class="n">df</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_file</span><span class="p">)</span>
-                <span class="n">is_numpy</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported file extension: </span><span class="si">{</span><span class="n">file_extension</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Process input data into chunks with parallel support.&quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_input_file</span><span class="p">()</span>
+        <span class="n">is_numpy</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+        
+        <span class="c1"># Handle parallel strategies</span>
+        <span class="k">if</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">PARALLEL_ROWS</span><span class="p">,</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">PARALLEL_BLOCKS</span><span class="p">,</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">DYNAMIC</span><span class="p">]:</span>
+            <span class="n">chunks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_chunk_parallel</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">is_numpy</span><span class="p">:</span>
+            <span class="n">chunks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_chunk_numpy_array</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Process pandas DataFrame chunks</span>
+            <span class="n">chunks</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">match</span> <span class="n">strategy</span><span class="p">:</span>
+                <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">ROWS</span><span class="p">:</span>
+                    <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span><span class="p">)</span>
+                    <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">)]</span>
+                    
+                <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">COLUMNS</span><span class="p">:</span>
+                    <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span><span class="p">)</span>
+                    <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">)]</span>
+                    
+                <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">TOKENS</span><span class="p">:</span>
+                    <span class="n">token_counts</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">total_tokens</span> <span class="o">=</span> <span class="n">token_counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="n">tokens_per_chunk</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">total_tokens</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span><span class="p">)</span>
+                    
+                    <span class="n">current_chunk_start</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">current_token_count</span> <span class="o">=</span> <span class="mi">0</span>
+                    
+                    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">token_count</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">token_counts</span><span class="p">):</span>
+                        <span class="n">current_token_count</span> <span class="o">+=</span> <span class="n">token_count</span>
+                        <span class="k">if</span> <span class="n">current_token_count</span> <span class="o">&gt;=</span> <span class="n">tokens_per_chunk</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">current_chunk_start</span><span class="p">:</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+                            <span class="n">current_chunk_start</span> <span class="o">=</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span>
+                            <span class="n">current_token_count</span> <span class="o">=</span> <span class="mi">0</span>
+                    
+                    <span class="k">if</span> <span class="n">current_chunk_start</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+                        <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">current_chunk_start</span><span class="p">:])</span>
+                    
+                <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">BLOCKS</span><span class="p">:</span>
+                    <span class="n">rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                    <span class="n">cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+                    <span class="n">block_rows</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">rows</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">))</span>
+                    <span class="n">block_cols</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">cols</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">))</span>
+                    
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">block_rows</span><span class="p">):</span>
+                        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">block_cols</span><span class="p">):</span>
+                            <span class="n">block</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">block_rows</span><span class="p">,</span> <span class="n">rows</span><span class="p">),</span> 
+                                          <span class="n">j</span><span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="n">block_cols</span><span class="p">,</span> <span class="n">cols</span><span class="p">)]</span>
+                            <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+                    
+                <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">NO_CHUNKS</span><span class="p">:</span>
+                    <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">data</span><span class="p">]</span>
+                    
+                <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown chunking strategy: </span><span class="si">{</span><span class="n">strategy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Get output file base name without extension</span>
-        <span class="n">output_base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">output_ext</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-
-        <span class="k">if</span> <span class="n">is_numpy</span><span class="p">:</span>
-            <span class="n">chunks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_chunk_numpy_array</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">strategy</span><span class="p">)</span>
-            <span class="c1"># Save NumPy chunks only if save_chunks is True</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_chunks</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chunks</span><span class="p">):</span>
-                    <span class="n">chunk_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_base</span><span class="si">}</span><span class="s2">_chunk_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">.npy&quot;</span>
-                    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">chunk_filename</span><span class="p">,</span> <span class="n">chunk</span><span class="p">)</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved NumPy chunk </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">chunk_filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">chunks</span>
-
-        <span class="c1"># Process pandas DataFrame chunks</span>
-        <span class="n">chunks</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">match</span> <span class="n">strategy</span><span class="p">:</span>
-            <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">ROWS</span><span class="p">:</span>
-                <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span><span class="p">)</span>  <span class="c1"># Ensure chunk_size is at least 1</span>
-                <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">)]</span>
-                
-            <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">COLUMNS</span><span class="p">:</span>
-                <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span><span class="p">)</span>  <span class="c1"># Ensure chunk_size is at least 1</span>
-                <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">i</span><span class="p">:</span><span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">),</span> <span class="n">chunk_size</span><span class="p">)]</span>
-                
-            <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">TOKENS</span><span class="p">:</span>
-                <span class="n">token_counts</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">len</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-                <span class="n">total_tokens</span> <span class="o">=</span> <span class="n">token_counts</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-                <span class="n">tokens_per_chunk</span> <span class="o">=</span> <span class="n">total_tokens</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span>
-                
-                <span class="n">current_chunk_start</span> <span class="o">=</span> <span class="mi">0</span>
-                <span class="n">current_token_count</span> <span class="o">=</span> <span class="mi">0</span>
-                
-                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">token_count</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">token_counts</span><span class="p">):</span>
-                    <span class="n">current_token_count</span> <span class="o">+=</span> <span class="n">token_count</span>
-                    <span class="k">if</span> <span class="n">current_token_count</span> <span class="o">&gt;=</span> <span class="n">tokens_per_chunk</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_chunks</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-                        <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">current_chunk_start</span><span class="p">:</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
-                        <span class="n">current_chunk_start</span> <span class="o">=</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span>
-                        <span class="n">current_token_count</span> <span class="o">=</span> <span class="mi">0</span>
-                
-                <span class="k">if</span> <span class="n">current_chunk_start</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
-                    <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">current_chunk_start</span><span class="p">:])</span>
-                
-            <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">BLOCKS</span><span class="p">:</span>
-                <span class="n">rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
-                <span class="n">cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
-                <span class="n">block_rows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">rows</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
-                <span class="n">block_cols</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cols</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
-                
-                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">block_rows</span><span class="p">):</span>
-                    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">block_cols</span><span class="p">):</span>
-                        <span class="n">block</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">block_rows</span><span class="p">,</span> <span class="n">rows</span><span class="p">),</span> 
-                                      <span class="n">j</span><span class="p">:</span><span class="nb">min</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span class="n">block_cols</span><span class="p">,</span> <span class="n">cols</span><span class="p">)]</span>
-                        <span class="n">chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
-                
-            <span class="k">case</span> <span class="n">ChunkingStrategy</span><span class="o">.</span><span class="n">NO_CHUNKS</span><span class="p">:</span>
-                <span class="n">chunks</span> <span class="o">=</span> <span class="p">[</span><span class="n">df</span><span class="p">]</span>
-                
-            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown chunking strategy: </span><span class="si">{</span><span class="n">strategy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="c1"># Save pandas DataFrame chunks only if save_chunks is True</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_chunks</span><span class="p">:</span>
+            <span class="n">output_base</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">output_ext</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chunks</span><span class="p">):</span>
                 <span class="n">chunk_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">output_base</span><span class="si">}</span><span class="s2">_chunk_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">output_ext</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="n">chunk</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">chunk_filename</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">chunk_filename</span><span class="p">,</span> <span class="n">chunk</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">chunk</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">chunk_filename</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved chunk </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">chunk_filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">chunks</span></div>
+
+
+<div class="viewcode-block" id="ChunkingExperiment.get_optimal_chunk_size">
+<a class="viewcode-back" href="../../api.html#chunking_pandas.core.ChunkingExperiment.get_optimal_chunk_size">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_optimal_chunk_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate optimal chunk size based on data size and available resources.&quot;&quot;&quot;</span>
+        <span class="n">memory_per_row</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># Approximate memory per row in bytes</span>
+        <span class="n">available_memory</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>  <span class="c1"># 1GB default limit</span>
+        
+        <span class="c1"># Calculate based on memory and CPU cores</span>
+        <span class="n">memory_based_size</span> <span class="o">=</span> <span class="n">available_memory</span> <span class="o">//</span> <span class="p">(</span><span class="n">memory_per_row</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span><span class="p">)</span>
+        <span class="n">cpu_based_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">data_size</span> <span class="o">//</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span> <span class="o">*</span> <span class="mi">2</span><span class="p">))</span>
+        
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">memory_based_size</span><span class="p">,</span> <span class="n">cpu_based_size</span><span class="p">)</span></div>
 </div>
 
 </pre></div>
