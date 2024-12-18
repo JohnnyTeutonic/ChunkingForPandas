@@ -15,7 +15,7 @@ Installing from PyPI
 
 .. code-block:: bash
 
-   pip install chunking-experiment
+   pip install chunking-pandas
 
 Installing from source
 --------------------
