@@ -161,7 +161,7 @@ def test_parallel_processing(test_files, tmp_path):
         chunks = experiment.process_chunks(strategy)
         assert len(chunks) > 0
 
-# Test NumPy Array Processing
+# Test numpy array processing
 def test_numpy_array_processing(tmp_path):
     """Test processing of numpy arrays."""
     # Create sample numpy array and save it
