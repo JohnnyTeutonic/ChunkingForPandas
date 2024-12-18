@@ -41,35 +41,25 @@ class ChunkingExperiment:
         """
         self.file_format = file_format
         self.save_chunks = save_chunks
+        self.output_file = output_file
         
         if not save_chunks:
             logger.warning("Chunks will not be saved to disk as save_chunks=False")
         
-        match file_format:
-            case FileFormat.CSV:
-                self.input_file = input_file
-                self.output_file = output_file
-            case FileFormat.JSON:
-                if not input_file.endswith('.json'):
-                    logger.error(f"Input file must be a JSON file, got: {input_file}")
-                    raise ValueError(f"Input file must be a JSON file, got: {input_file}")
-                self.input_file = input_file
-                self.output_file = output_file
-            case FileFormat.PARQUET:
-                if not input_file.endswith('.parquet'):
-                    logger.error(f"Input file must be a parquet file, got: {input_file}")
-                    raise ValueError(f"Input file must be a parquet file, got: {input_file}")
-                self.input_file = input_file
-                self.output_file = output_file
-            case FileFormat.NUMPY:
-                if not input_file.endswith('.npy'):
-                    logger.error(f"Input file must be a NumPy file, got: {input_file}")
-                    raise ValueError(f"Input file must be a NumPy file, got: {input_file}")
-                self.input_file = input_file
-                self.output_file = output_file
-            case _:
-                logger.error(f"Unsupported file format: {file_format}")
-                raise ValueError(f"Unsupported file format: {file_format}")
+        # Map file formats to their expected extensions
+        format_extensions = {
+            FileFormat.CSV: '.csv',
+            FileFormat.JSON: '.json',
+            FileFormat.PARQUET: '.parquet',
+            FileFormat.NUMPY: '.npy'
+        }
+        
+        expected_ext = format_extensions[file_format]
+        if not input_file.lower().endswith(expected_ext):
+            logger.error(f"Input file must be a {expected_ext} file, got: {input_file}")
+            raise ValueError(f"Input file must be a {expected_ext} file, got: {input_file}")
+        
+        self.input_file = input_file
         
         self.n_chunks = max(1, n_chunks)  # Ensure at least 1 chunk
         

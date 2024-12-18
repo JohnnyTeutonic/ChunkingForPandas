@@ -209,7 +209,7 @@ def test_invalid_inputs(tmp_path):
             chunking_strategy="invalid_strategy"
         )
     
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         ChunkingExperiment(
             str(tmp_path / "test.txt"),
             "output.csv",
