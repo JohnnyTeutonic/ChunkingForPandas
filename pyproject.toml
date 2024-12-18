@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "chunking_pandas"
-version = "0.1.6"
+version = "0.1.8"
 authors = [
   { name="Jonathan Reich", email="jonathanreich100@gmail.com" },
 ]
@@ -22,6 +22,8 @@ dependencies = [
     "pytest>=7.0.0",
     "pyarrow>=7.0.0",
     "numpy>=1.20.0",
+    "seaborn>=0.12.0",
+    "matplotlib>=3.7.0",
 ]
 
 

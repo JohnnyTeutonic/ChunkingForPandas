@@ -13,6 +13,9 @@ PyPI package found here: https://pypi.org/project/chunking-pandas/
 - pandas
 - pytest
 - numpy
+- seaborn
+- matplotlib
+- pyarrow
 
 ## Installation
 
