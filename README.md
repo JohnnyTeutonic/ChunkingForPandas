@@ -51,17 +51,23 @@ class_instance.process_chunks()
 
 ## Run the web interface
 
-Go to the app folder and run the following command:
+To run as a command, either run:
+
+```bash
+make run-app
+```
+
+or:
+
+```python
+python app/gradio_interface.py
+```
+
+Or to run the app programmatically:
 
 ```python
 from gradio_interface import launch_interface
 launch_interface()
-```
-
-Alternatively, you can run the following command to start the web interface:
-
-```bash
-python gradio_interface.py
 ```
 
 ## Features
@@ -71,7 +77,8 @@ python gradio_interface.py
 - Web interface using Gradio
 - Comprehensive test suite
 - Documentation using Sphinx
-- Benchmarking the chunking strategies
+- Benchmarking various chunking strategies
+- Basic examples contained within examples/
 
 ## Development
 
@@ -132,7 +139,7 @@ make docs-serve
 make install
 make install-docs
 make lint
-make run
+make run-app
 make test
 make typecheck
 ```

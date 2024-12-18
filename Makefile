@@ -46,8 +46,8 @@ test:
 	pytest $(TEST_DIR) -v --cov=$(SRC_DIR) --cov-report=term-missing
 
 # Run the Gradio app
-run:
-	$(PYTHON) -m chunking_pandas.gradio_interface
+run-app
+	$(PYTHON) app/gradio_interface.py
 
 # Clean up Python cache files and build artifacts
 clean:
