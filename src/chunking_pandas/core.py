@@ -2,7 +2,10 @@ from enum import Enum
 import logging
 import pandas as pd
 import numpy as np
-from typing import Union, List
+from typing import Union, List, Optional
+from multiprocessing import Pool, cpu_count
+from functools import partial
+from pathlib import Path
 
 from .utils.logging import setup_logging
 setup_logging()
@@ -15,6 +18,9 @@ class ChunkingStrategy(str, Enum):
     TOKENS = "tokens"
     BLOCKS = "blocks"
     NO_CHUNKS = "None"
+    PARALLEL_ROWS = "parallel_rows"
+    PARALLEL_BLOCKS = "parallel_blocks"
+    DYNAMIC = "dynamic"
 
 class FileFormat(str, Enum):
     CSV = "csv"
@@ -27,24 +33,24 @@ class ChunkingExperiment:
                  file_format: FileFormat = FileFormat.CSV, 
                  auto_run: bool = True, n_chunks: int = 4, 
                  chunking_strategy: str = "rows",
-                 save_chunks: bool = False):
-        """Initialize ChunkingExperiment with specified file format.
-        
-        Args:
-            input_file: Path to input file or NumPy array
-            output_file: Path to output file base name
-            file_format: FileFormat enum specifying input file type
-            auto_run: Whether to automatically run processing
-            n_chunks: Number of chunks to split the data into
-            chunking_strategy: Strategy to use for chunking data
-            save_chunks: Whether to save chunks to disk (default: True)
-        """
+                 save_chunks: bool = False,
+                 n_workers: Optional[int] = None):
+        """Initialize ChunkingExperiment with specified file format."""
+        if n_workers is not None and n_workers <= 0:
+            raise ValueError("Number of workers must be positive")
+            
         self.file_format = file_format
         self.save_chunks = save_chunks
         self.output_file = output_file
+        self.n_workers = n_workers or cpu_count()
         
         if not save_chunks:
             logger.warning("Chunks will not be saved to disk as save_chunks=False")
+        
+        # Check if input file exists
+        if not Path(input_file).exists():
+            logger.error(f"Input file does not exist: {input_file}")
+            raise FileNotFoundError(f"Input file does not exist: {input_file}")
         
         # Map file formats to their expected extensions
         format_extensions = {
@@ -60,12 +66,73 @@ class ChunkingExperiment:
             raise ValueError(f"Input file must be a {expected_ext} file, got: {input_file}")
         
         self.input_file = input_file
-        
-        self.n_chunks = max(1, n_chunks)  # Ensure at least 1 chunk
+        self.n_chunks = max(1, n_chunks)
         
         if auto_run:
             self.process_chunks(ChunkingStrategy(chunking_strategy))
-    
+
+    def _read_input_file(self) -> Union[pd.DataFrame, np.ndarray]:
+        """Read input file based on file format."""
+        file_extension = self.input_file.split('.')[-1].lower()
+        match file_extension:
+            case "csv":
+                return pd.read_csv(self.input_file)
+            case "json":
+                return pd.read_json(self.input_file)
+            case "parquet":
+                return pd.read_parquet(self.input_file)
+            case "npy":
+                return np.load(self.input_file)
+            case _:
+                raise ValueError(f"Unsupported file extension: {file_extension}")
+
+    def _process_chunk_parallel(self, chunk_data: tuple) -> Union[pd.DataFrame, np.ndarray]:
+        """Process a single chunk in parallel."""
+        data, start_idx, end_idx = chunk_data
+        return data.iloc[start_idx:end_idx] if isinstance(data, pd.DataFrame) else data[start_idx:end_idx]
+
+    def _process_block_parallel(self, block_data: tuple) -> Union[pd.DataFrame, np.ndarray]:
+        """Process a single block in parallel."""
+        data, start_row, end_row, start_col, end_col = block_data
+        if isinstance(data, pd.DataFrame):
+            return data.iloc[start_row:end_row, start_col:end_col]
+        return data[start_row:end_row, start_col:end_col]
+
+    def _chunk_parallel(self, data: Union[pd.DataFrame, np.ndarray], strategy: ChunkingStrategy) -> List[Union[pd.DataFrame, np.ndarray]]:
+        """Parallel chunking implementation."""
+        total_size = len(data)
+        chunk_size = max(1, total_size // self.n_chunks)
+        
+        if strategy == ChunkingStrategy.PARALLEL_ROWS:
+            chunk_args = [(data, i, min(i + chunk_size, total_size)) 
+                         for i in range(0, total_size, chunk_size)]
+            with Pool(self.n_workers) as pool:
+                return pool.map(self._process_chunk_parallel, chunk_args)
+        
+        elif strategy == ChunkingStrategy.PARALLEL_BLOCKS:
+            rows = len(data)
+            cols = len(data.columns) if isinstance(data, pd.DataFrame) else data.shape[1]
+            block_rows = max(1, int(rows ** 0.5))
+            block_cols = max(1, int(cols ** 0.5))
+            
+            block_args = [
+                (data, i, min(i + block_rows, rows), j, min(j + block_cols, cols))
+                for i in range(0, rows, block_rows)
+                for j in range(0, cols, block_cols)
+            ]
+            
+            with Pool(self.n_workers) as pool:
+                return pool.map(self._process_block_parallel, block_args)
+        
+        elif strategy == ChunkingStrategy.DYNAMIC:
+            # Dynamic chunking based on data size and available CPU cores
+            optimal_chunk_size = max(1, total_size // (self.n_workers * 2))
+            chunk_args = [(data, i, min(i + optimal_chunk_size, total_size))
+                         for i in range(0, total_size, optimal_chunk_size)]
+            
+            with Pool(self.n_workers) as pool:
+                return pool.map(self._process_chunk_parallel, chunk_args)
+
     def _chunk_numpy_array(self, arr: np.ndarray, strategy: ChunkingStrategy) -> List[np.ndarray]:
         """Helper method to chunk NumPy arrays."""
         match strategy:
@@ -100,98 +167,84 @@ class ChunkingExperiment:
                 raise ValueError(f"Unsupported chunking strategy for NumPy arrays: {strategy}")
 
     def process_chunks(self, strategy: ChunkingStrategy) -> Union[List[pd.DataFrame], List[np.ndarray]]:
-        """Process input data into chunks and optionally save them to output files.
+        """Process input data into chunks with parallel support."""
+        data = self._read_input_file()
+        is_numpy = isinstance(data, np.ndarray)
         
-        Args:
-            strategy: ChunkingStrategy enum specifying how to split the data
-            
-        Returns:
-            List of pandas DataFrames or NumPy arrays representing the chunks
-        """
-        # Read the input file
-        file_extension = self.input_file.split('.')[-1].lower()
-        match file_extension:
-            case "csv":
-                df = pd.read_csv(self.input_file)
-                is_numpy = False
-            case "json":
-                df = pd.read_json(self.input_file)
-                is_numpy = False
-            case "parquet":
-                df = pd.read_parquet(self.input_file)
-                is_numpy = False
-            case "npy":
-                df = np.load(self.input_file)
-                is_numpy = True
-            case _:
-                raise ValueError(f"Unsupported file extension: {file_extension}")
+        # Handle parallel strategies
+        if strategy in [ChunkingStrategy.PARALLEL_ROWS, ChunkingStrategy.PARALLEL_BLOCKS, ChunkingStrategy.DYNAMIC]:
+            chunks = self._chunk_parallel(data, strategy)
+        elif is_numpy:
+            chunks = self._chunk_numpy_array(data, strategy)
+        else:
+            # Process pandas DataFrame chunks
+            chunks = []
+            match strategy:
+                case ChunkingStrategy.ROWS:
+                    chunk_size = max(1, len(data) // self.n_chunks)
+                    chunks = [data.iloc[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+                    
+                case ChunkingStrategy.COLUMNS:
+                    chunk_size = max(1, len(data.columns) // self.n_chunks)
+                    chunks = [data.iloc[:, i:i + chunk_size] for i in range(0, len(data.columns), chunk_size)]
+                    
+                case ChunkingStrategy.TOKENS:
+                    token_counts = data.astype(str).apply(lambda x: x.str.len().sum(), axis=1)
+                    total_tokens = token_counts.sum()
+                    tokens_per_chunk = max(1, total_tokens // self.n_chunks)
+                    
+                    current_chunk_start = 0
+                    current_token_count = 0
+                    
+                    for idx, token_count in enumerate(token_counts):
+                        current_token_count += token_count
+                        if current_token_count >= tokens_per_chunk and len(chunks) < self.n_chunks - 1:
+                            chunks.append(data.iloc[current_chunk_start:idx + 1])
+                            current_chunk_start = idx + 1
+                            current_token_count = 0
+                    
+                    if current_chunk_start < len(data):
+                        chunks.append(data.iloc[current_chunk_start:])
+                    
+                case ChunkingStrategy.BLOCKS:
+                    rows = len(data)
+                    cols = len(data.columns)
+                    block_rows = max(1, int(rows ** 0.5))
+                    block_cols = max(1, int(cols ** 0.5))
+                    
+                    for i in range(0, rows, block_rows):
+                        for j in range(0, cols, block_cols):
+                            block = data.iloc[i:min(i + block_rows, rows), 
+                                          j:min(j + block_cols, cols)]
+                            chunks.append(block)
+                    
+                case ChunkingStrategy.NO_CHUNKS:
+                    chunks = [data]
+                    
+                case _:
+                    raise ValueError(f"Unknown chunking strategy: {strategy}")
 
-        # Get output file base name without extension
-        output_base = self.output_file.rsplit('.', 1)[0]
-        output_ext = self.output_file.rsplit('.', 1)[1]
-
-        if is_numpy:
-            chunks = self._chunk_numpy_array(df, strategy)
-            # Save NumPy chunks only if save_chunks is True
-            if self.save_chunks:
-                for i, chunk in enumerate(chunks):
-                    chunk_filename = f"{output_base}_chunk_{i+1}.npy"
-                    np.save(chunk_filename, chunk)
-                    logger.info(f"Saved NumPy chunk {i+1} to {chunk_filename}")
-            return chunks
-
-        # Process pandas DataFrame chunks
-        chunks = []
-        match strategy:
-            case ChunkingStrategy.ROWS:
-                chunk_size = max(1, len(df) // self.n_chunks)  # Ensure chunk_size is at least 1
-                chunks = [df.iloc[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
-                
-            case ChunkingStrategy.COLUMNS:
-                chunk_size = max(1, len(df.columns) // self.n_chunks)  # Ensure chunk_size is at least 1
-                chunks = [df.iloc[:, i:i + chunk_size] for i in range(0, len(df.columns), chunk_size)]
-                
-            case ChunkingStrategy.TOKENS:
-                token_counts = df.astype(str).apply(lambda x: x.str.len().sum(), axis=1)
-                total_tokens = token_counts.sum()
-                tokens_per_chunk = total_tokens // self.n_chunks
-                
-                current_chunk_start = 0
-                current_token_count = 0
-                
-                for idx, token_count in enumerate(token_counts):
-                    current_token_count += token_count
-                    if current_token_count >= tokens_per_chunk and len(chunks) < self.n_chunks - 1:
-                        chunks.append(df.iloc[current_chunk_start:idx + 1])
-                        current_chunk_start = idx + 1
-                        current_token_count = 0
-                
-                if current_chunk_start < len(df):
-                    chunks.append(df.iloc[current_chunk_start:])
-                
-            case ChunkingStrategy.BLOCKS:
-                rows = len(df)
-                cols = len(df.columns)
-                block_rows = int(rows ** 0.5)
-                block_cols = int(cols ** 0.5)
-                
-                for i in range(0, rows, block_rows):
-                    for j in range(0, cols, block_cols):
-                        block = df.iloc[i:min(i + block_rows, rows), 
-                                      j:min(j + block_cols, cols)]
-                        chunks.append(block)
-                
-            case ChunkingStrategy.NO_CHUNKS:
-                chunks = [df]
-                
-            case _:
-                raise ValueError(f"Unknown chunking strategy: {strategy}")
-
-        # Save pandas DataFrame chunks only if save_chunks is True
         if self.save_chunks:
+            output_base = self.output_file.rsplit('.', 1)[0]
+            output_ext = self.output_file.rsplit('.', 1)[1]
+            
             for i, chunk in enumerate(chunks):
                 chunk_filename = f"{output_base}_chunk_{i+1}.{output_ext}"
-                chunk.to_csv(chunk_filename, index=False)
+                if isinstance(chunk, np.ndarray):
+                    np.save(chunk_filename, chunk)
+                else:
+                    chunk.to_csv(chunk_filename, index=False)
                 logger.info(f"Saved chunk {i+1} to {chunk_filename}")
 
         return chunks
+
+    def get_optimal_chunk_size(self, data_size: int) -> int:
+        """Calculate optimal chunk size based on data size and available resources."""
+        memory_per_row = 1000  # Approximate memory per row in bytes
+        available_memory = 1024 * 1024 * 1024  # 1GB default limit
+        
+        # Calculate based on memory and CPU cores
+        memory_based_size = available_memory // (memory_per_row * self.n_workers)
+        cpu_based_size = max(1, data_size // (self.n_workers * 2))
+        
+        return min(memory_based_size, cpu_based_size)
