@@ -70,21 +70,21 @@ class ChunkingExperiment:
         """Helper method to chunk NumPy arrays."""
         match strategy:
             case ChunkingStrategy.ROWS:
-                chunk_size = arr.shape[0] // self.n_chunks
+                chunk_size = max(1, arr.shape[0] // self.n_chunks)  # Ensure chunk_size is at least 1
                 return [arr[i:i + chunk_size] for i in range(0, arr.shape[0], chunk_size)]
                 
             case ChunkingStrategy.COLUMNS:
                 if arr.ndim < 2:
                     raise ValueError("Cannot chunk 1D array by columns")
-                chunk_size = arr.shape[1] // self.n_chunks
+                chunk_size = max(1, arr.shape[1] // self.n_chunks)  # Ensure chunk_size is at least 1
                 return [arr[:, i:i + chunk_size] for i in range(0, arr.shape[1], chunk_size)]
                 
             case ChunkingStrategy.BLOCKS:
                 if arr.ndim < 2:
                     raise ValueError("Cannot chunk 1D array into blocks")
                 rows, cols = arr.shape
-                block_rows = int(rows ** 0.5)
-                block_cols = int(cols ** 0.5)
+                block_rows = max(1, int(rows ** 0.5))  # Ensure block size is at least 1
+                block_cols = max(1, int(cols ** 0.5))
                 chunks = []
                 for i in range(0, rows, block_rows):
                     for j in range(0, cols, block_cols):
@@ -144,11 +144,11 @@ class ChunkingExperiment:
         chunks = []
         match strategy:
             case ChunkingStrategy.ROWS:
-                chunk_size = len(df) // self.n_chunks
+                chunk_size = max(1, len(df) // self.n_chunks)  # Ensure chunk_size is at least 1
                 chunks = [df.iloc[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
                 
             case ChunkingStrategy.COLUMNS:
-                chunk_size = len(df.columns) // self.n_chunks
+                chunk_size = max(1, len(df.columns) // self.n_chunks)  # Ensure chunk_size is at least 1
                 chunks = [df.iloc[:, i:i + chunk_size] for i in range(0, len(df.columns), chunk_size)]
                 
             case ChunkingStrategy.TOKENS:

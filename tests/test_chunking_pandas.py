@@ -239,3 +239,125 @@ def test_numpy_invalid_strategies(test_files, tmp_path):
     # Test invalid strategy
     with pytest.raises(ValueError):
         experiment.process_chunks(ChunkingStrategy.TOKENS)
+
+def test_file_format_extensions():
+    """Test all file format extensions."""
+    format_extensions = {
+        FileFormat.CSV: '.csv',
+        FileFormat.JSON: '.json',
+        FileFormat.PARQUET: '.parquet',
+        FileFormat.NUMPY: '.npy'
+    }
+    
+    for format_type, extension in format_extensions.items():
+        # Test with uppercase extension
+        experiment = ChunkingExperiment(
+            f"test{extension.upper()}",
+            "output.csv",
+            file_format=format_type,
+            auto_run=False
+        )
+        assert experiment.input_file.endswith(extension.upper())
+
+def test_chunking_strategy_conversion():
+    """Test conversion of string chunking strategy to enum."""
+    experiment = ChunkingExperiment(
+        "test.csv",
+        "output.csv",
+        chunking_strategy="rows",
+        auto_run=False
+    )
+    
+    # Test all valid strategies
+    for strategy in ["rows", "columns", "tokens", "blocks", "None"]:
+        chunks = experiment.process_chunks(ChunkingStrategy(strategy))
+        assert isinstance(chunks, list)
+
+def test_numpy_array_edge_cases(sample_numpy_data, tmp_path):
+    """Test edge cases for numpy array operations."""
+    numpy_path = tmp_path / "test.npy"
+    np.save(str(numpy_path), sample_numpy_data)
+    
+    experiment = ChunkingExperiment(
+        str(numpy_path),
+        str(tmp_path / "output.npy"),
+        file_format=FileFormat.NUMPY,
+        auto_run=False
+    )
+    
+    # Test with n_chunks larger than array size
+    experiment.n_chunks = 1000
+    chunks = experiment.process_chunks(ChunkingStrategy.ROWS)
+    assert len(chunks) > 0
+    
+    # Test with single chunk
+    experiment.n_chunks = 1
+    chunks = experiment.process_chunks(ChunkingStrategy.ROWS)
+    assert len(chunks) == 1
+
+def test_output_file_extensions(test_files, tmp_path):
+    """Test different output file extensions."""
+    for input_format in FileFormat:
+        input_file = test_files[input_format.value]
+        
+        # Test with different output extensions
+        for output_ext in ['.csv', '.json', '.parquet', '.npy']:
+            output_file = tmp_path / f"output{output_ext}"
+            experiment = ChunkingExperiment(
+                str(input_file),
+                str(output_file),
+                file_format=input_format,
+                save_chunks=True,
+                auto_run=False
+            )
+            
+            chunks = experiment.process_chunks(ChunkingStrategy.ROWS)
+            assert len(chunks) > 0
+            
+            # Check if chunk files use input format's extension
+            chunk_file = tmp_path / f"output_chunk_1{output_ext}"
+            assert chunk_file.exists()
+
+def test_invalid_chunk_numbers():
+    """Test invalid chunk numbers."""
+    # Test with zero chunks (should be converted to 1)
+    experiment = ChunkingExperiment(
+        "test.csv",
+        "output.csv",
+        n_chunks=0,
+        auto_run=False
+    )
+    assert experiment.n_chunks == 1
+    
+    # Test with negative chunks (should be converted to 1)
+    experiment = ChunkingExperiment(
+        "test.csv",
+        "output.csv",
+        n_chunks=-5,
+        auto_run=False
+    )
+    assert experiment.n_chunks == 1
+
+def test_unsupported_file_extension(tmp_path):
+    """Test handling of unsupported file extensions."""
+    # Create a file with unsupported extension
+    test_file = tmp_path / "test.txt"
+    test_file.touch()
+    
+    with pytest.raises(ValueError) as exc_info:
+        experiment = ChunkingExperiment(
+            str(test_file),
+            "output.csv"
+        )
+    assert "Input file must be" in str(exc_info.value)
+    
+    # Test reading unsupported extension
+    experiment = ChunkingExperiment(
+        "test.csv",
+        "output.csv",
+        auto_run=False
+    )
+    experiment.input_file = str(test_file)
+    with pytest.raises(ValueError) as exc_info:
+        experiment.process_chunks(ChunkingStrategy.ROWS)
+    assert "Unsupported file extension" in str(exc_info.value)
