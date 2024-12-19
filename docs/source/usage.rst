@@ -19,12 +19,18 @@ Basic Usage
 Web Interface
 -------------
 
-To run the web interface:
+To run the web interface programatically:
 
 .. code-block:: python
 
-    from chunking_pandas.gradio_interface import launch_interface
+    from chunking_pandas import launch_interface
     launch_interface()
+
+Or to run it as a console script:
+
+.. code-block:: bash
+
+    chunking-interface
 
 Chunking Strategies
 -------------------

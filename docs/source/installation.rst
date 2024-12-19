@@ -44,6 +44,7 @@ Speeding up the installation Process
 ------------------------------------
 
 .. code-block:: bash
+   
    pip install uv
    uv pip install -e .
 

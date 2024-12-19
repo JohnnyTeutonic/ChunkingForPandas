@@ -44,3 +44,6 @@ docs = [
 [project.urls]
 "Homepage" = "https://github.com/JohnnyTeutonic/ChunkingForPandas"
 "Bug Tracker" = "https://github.com/JohnnyTeutonic/ChunkingForPandas/issues" 
+
+[project.scripts]
+chunking-interface = "chunking_pandas.interface:launch_interface"

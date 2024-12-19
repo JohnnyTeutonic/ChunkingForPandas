@@ -47,7 +47,7 @@ test:
 
 # Run the Gradio app
 run-app:
-	$(PYTHON) app/gradio_interface.py
+	chunking-interface
 
 # Clean up Python cache files and build artifacts
 clean:
