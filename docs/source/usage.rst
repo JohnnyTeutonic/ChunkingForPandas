@@ -19,12 +19,18 @@ Basic Usage
 Web Interface
 -------------
 
-To run the web interface:
+To run the web interface programatically:
 
 .. code-block:: python
 
-    from chunking_pandas.gradio_interface import launch_interface
+    from chunking_pandas import launch_interface
     launch_interface()
+
+Or to run it as a console script:
+
+.. code-block:: bash
+
+    chunking-interface
 
 Chunking Strategies
 -------------------
@@ -35,6 +41,8 @@ The package supports several chunking strategies:
 * **columns**: Split data by columns
 * **tokens**: Split data by approximate token count
 * **blocks**: Split data into block matrices (for 2D data)
+* **parallel rows**: Split data by parallel strategies
+* **parallel columns**: Split data by parallel strategies
 * **none**: Keep data as single chunk
 
 File Formats

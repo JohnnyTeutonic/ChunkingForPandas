@@ -1,5 +1,15 @@
-from .core import ChunkingExperiment, ChunkingStrategy, FileFormat
-from .utils.logging import setup_logging
+from .core import ChunkingExperiment, ChunkingStrategy, FileFormat, ChunkingMetrics
+from .visualization import plot_performance_comparison
+from .benchmark import run_benchmark
+from .interface import launch_interface, create_interface
 
-__version__ = "0.1.4"
-__all__ = ["ChunkingExperiment", "ChunkingStrategy", "FileFormat", "setup_logging"] 
+__all__ = [
+    'ChunkingExperiment',
+    'ChunkingStrategy',
+    'FileFormat',
+    'ChunkingMetrics',
+    'plot_performance_comparison',
+    'run_benchmark',
+    'launch_interface',
+    'create_interface'
+] 

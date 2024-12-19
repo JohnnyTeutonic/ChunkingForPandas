@@ -13,6 +13,9 @@ PyPI package found here: https://pypi.org/project/chunking-pandas/
 - pandas
 - pytest
 - numpy
+- seaborn
+- matplotlib
+- pyarrow
 
 ## Installation
 
@@ -57,22 +60,28 @@ To run as a command, either run:
 make run-app
 ```
 
-or:
+or as a module:
 
 ```python
-python app/gradio_interface.py
+python -m chunking_pandas
+```
+
+Or as a console script:
+
+```bash
+chunking-interface
 ```
 
 Or to run the app programmatically:
 
 ```python
-from gradio_interface import launch_interface
+from chunking_pandas import launch_interface
 launch_interface()
 ```
 
 ## Features
 
-- Multiple chunking strategies (rows, columns, tokens)
+- Multiple chunking strategies (rows, columns, tokens, blocks, parallel strategies)
 - Support for CSV, JSON, Numpy and Parquet files
 - Web interface using Gradio
 - Comprehensive test suite

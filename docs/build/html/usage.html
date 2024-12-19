@@ -97,9 +97,13 @@
 </section>
 <section id="web-interface">
 <h2>Web Interface<a class="headerlink" href="#web-interface" title="Link to this heading"></a></h2>
-<p>To run the web interface:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">chunking_pandas.gradio_interface</span> <span class="kn">import</span> <span class="n">launch_interface</span>
+<p>To run the web interface programatically:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">chunking_pandas</span> <span class="kn">import</span> <span class="n">launch_interface</span>
 <span class="n">launch_interface</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Or to run it as a console script:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>chunking-interface
 </pre></div>
 </div>
 </section>
@@ -111,6 +115,8 @@
 <li><p><strong>columns</strong>: Split data by columns</p></li>
 <li><p><strong>tokens</strong>: Split data by approximate token count</p></li>
 <li><p><strong>blocks</strong>: Split data into block matrices (for 2D data)</p></li>
+<li><p><strong>parallel rows</strong>: Split data by parallel strategies</p></li>
+<li><p><strong>parallel columns</strong>: Split data by parallel strategies</p></li>
 <li><p><strong>none</strong>: Keep data as single chunk</p></li>
 </ul>
 </section>

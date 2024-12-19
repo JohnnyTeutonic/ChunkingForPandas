@@ -33,7 +33,7 @@ def get_sample_data_path() -> Path:
         df = pd.DataFrame({
             'A': range(100),
             'B': [f"Value_{i}" for i in range(100)],
-            'C': ['X', 'Y', 'Z'] * 34
+            'C': ['X', 'Y', 'Z'] * 33 + ['X']
         })
         df.to_csv(default_path, index=False)
         print(f"Created sample data file at {default_path}")

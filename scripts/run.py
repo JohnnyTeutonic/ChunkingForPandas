@@ -1,5 +1,5 @@
 import argparse
-from core import ChunkingExperiment, ChunkingStrategy, FileFormat
+from chunking_pandas.core import ChunkingExperiment, ChunkingStrategy, FileFormat
 
 def main():
     parser = argparse.ArgumentParser(description="Process files using various chunking strategies")

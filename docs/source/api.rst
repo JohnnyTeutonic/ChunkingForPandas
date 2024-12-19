@@ -12,7 +12,7 @@ Core Module
 Gradio Interface
 ----------------
 
-.. automodule:: chunking_pandas.gradio_interface
+.. automodule:: chunking_pandas.interface
    :members:
    :undoc-members:
    :show-inheritance: 

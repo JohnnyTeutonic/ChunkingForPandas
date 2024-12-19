@@ -19,7 +19,7 @@ A Python package for experimenting with different data chunking strategies.
 Features
 --------
 
-* Multiple chunking strategies (rows, columns, tokens, blocks)
+* Multiple chunking strategies (rows, columns, tokens, blocks, parallel strategies)
 * Support for CSV, JSON, Parquet, and NumPy files
 * Web interface using Gradio
 * Comprehensive test suite

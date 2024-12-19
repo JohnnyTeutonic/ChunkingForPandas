@@ -6,6 +6,9 @@ from typing import Union, List, Optional
 from multiprocessing import Pool, cpu_count
 from functools import partial
 from pathlib import Path
+import time
+from dataclasses import dataclass
+from typing import Dict, Any
 
 from .utils.logging import setup_logging
 setup_logging()
@@ -28,13 +31,23 @@ class FileFormat(str, Enum):
     PARQUET = "parquet"
     NUMPY = "numpy"
 
+@dataclass
+class ChunkingMetrics:
+    """Store metrics about chunking operations."""
+    processing_time: float
+    memory_usage: float
+    chunk_sizes: List[int]
+    strategy: str
+    total_chunks: int
+
 class ChunkingExperiment:
     def __init__(self, input_file: str, output_file: str, 
                  file_format: FileFormat = FileFormat.CSV, 
                  auto_run: bool = True, n_chunks: int = 4, 
                  chunking_strategy: str = "rows",
                  save_chunks: bool = False,
-                 n_workers: Optional[int] = None):
+                 n_workers: Optional[int] = None,
+                 monitor_performance: bool = False):
         """Initialize ChunkingExperiment with specified file format."""
         if n_workers is not None and n_workers <= 0:
             raise ValueError("Number of workers must be positive")
@@ -70,6 +83,9 @@ class ChunkingExperiment:
         
         if auto_run:
             self.process_chunks(ChunkingStrategy(chunking_strategy))
+        
+        self.monitor_performance = monitor_performance
+        self.metrics: Dict[str, ChunkingMetrics] = {}
 
     def _read_input_file(self) -> Union[pd.DataFrame, np.ndarray]:
         """Read input file based on file format."""
@@ -167,7 +183,9 @@ class ChunkingExperiment:
                 raise ValueError(f"Unsupported chunking strategy for NumPy arrays: {strategy}")
 
     def process_chunks(self, strategy: ChunkingStrategy) -> Union[List[pd.DataFrame], List[np.ndarray]]:
-        """Process input data into chunks with parallel support."""
+        """Process input data into chunks with parallel support and performance monitoring."""
+        start_time = time.time() if hasattr(self, "monitor_performance") and self.monitor_performance else None
+        initial_memory = self._get_memory_usage() if hasattr(self, "monitor_performance") and self.monitor_performance else None
         data = self._read_input_file()
         is_numpy = isinstance(data, np.ndarray)
         
@@ -236,6 +254,19 @@ class ChunkingExperiment:
                     chunk.to_csv(chunk_filename, index=False)
                 logger.info(f"Saved chunk {i+1} to {chunk_filename}")
 
+        if hasattr(self, "monitor_performance") and self.monitor_performance:
+            processing_time = time.time() - start_time
+            final_memory = self._get_memory_usage()
+            chunk_sizes = [len(chunk) for chunk in chunks]
+            
+            self.metrics[str(strategy)] = ChunkingMetrics(
+                processing_time=processing_time,
+                memory_usage=final_memory - initial_memory,
+                chunk_sizes=chunk_sizes,
+                strategy=str(strategy),
+                total_chunks=len(chunks)
+            )
+        
         return chunks
 
     def get_optimal_chunk_size(self, data_size: int) -> int:
@@ -248,3 +279,13 @@ class ChunkingExperiment:
         cpu_based_size = max(1, data_size // (self.n_workers * 2))
         
         return min(memory_based_size, cpu_based_size)
+
+    def get_metrics(self) -> Dict[str, ChunkingMetrics]:
+        """Return performance metrics for all operations."""
+        return self.metrics
+
+    def _get_memory_usage(self) -> float:
+        """Get current memory usage in MB."""
+        import psutil
+        process = psutil.Process()
+        return process.memory_info().rss / 1024 / 1024
