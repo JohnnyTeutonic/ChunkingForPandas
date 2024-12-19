@@ -35,6 +35,8 @@ The package supports several chunking strategies:
 * **columns**: Split data by columns
 * **tokens**: Split data by approximate token count
 * **blocks**: Split data into block matrices (for 2D data)
+* **parallel rows**: Split data by parallel strategies
+* **parallel columns**: Split data by parallel strategies
 * **none**: Keep data as single chunk
 
 File Formats
