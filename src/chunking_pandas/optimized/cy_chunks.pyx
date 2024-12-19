@@ -1,31 +1,31 @@
 # cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=False
-# cython: nonecheck=False
+# cython: boundscheck=True
+# cython: wraparound=True
+# cython: initializedcheck=True
 
 import numpy as np
 cimport numpy as np
-from cython.parallel import prange
 from libc.stdlib cimport malloc, free
 
-cpdef list chunk_array_cy(np.ndarray[double, ndim=2] data, int n_chunks):
-    """Optimized array chunking using Cython."""
+np.import_array()
+
+def chunk_array_cy(np.ndarray[double, ndim=2] data, int n_chunks):
+    """Safe Cython implementation of array chunking."""
     cdef:
         int rows = data.shape[0]
-        int cols = data.shape[1]
-        int chunk_size = rows // n_chunks
-        int i, j, chunk_idx
-        double[:, :] chunk_view
+        int chunk_size = max(1, rows // n_chunks)
         list chunks = []
-        int start_idx, end_idx
-        np.ndarray[double, ndim=2] chunk_array
+        int i, end_idx
+        np.ndarray[double, ndim=2] chunk
     
-    for chunk_idx in prange(n_chunks, nogil=True):
-        start_idx = chunk_idx * chunk_size
-        end_idx = start_idx + chunk_size if chunk_idx < n_chunks - 1 else rows
+    try:
+        for i in range(0, rows, chunk_size):
+            end_idx = min(i + chunk_size, rows)
+            chunk = np.array(data[i:end_idx], copy=True)
+            chunks.append(chunk)
         
-        with gil:
-            chunk_array = np.asarray(data[start_idx:end_idx]).copy()
-            chunks.append(chunk_array)
-    
-    return chunks
+        return chunks
+    except Exception as e:
+        chunk_size = max(1, rows // n_chunks)
+        return [np.array(data[i:i + chunk_size], copy=True) 
+                for i in range(0, rows, chunk_size)]

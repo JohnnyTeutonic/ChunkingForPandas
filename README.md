@@ -103,6 +103,18 @@ Or:
 make install-dev
 ```
 
+To install the optimized cython backend
+
+```bash
+pip install -e .[optimized]
+```
+
+then run the following command to install the optimized cython backend:
+
+```bash
+make install-optimized
+```
+
 ## Testing
 
 To run tests, run the following command from the root folder:
@@ -147,6 +159,7 @@ make docs-clean
 make docs-serve
 make install
 make install-docs
+make install-cython
 make lint
 make run-app
 make test

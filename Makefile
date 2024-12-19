@@ -32,6 +32,8 @@ docs-clean:
 docs-serve:
 	sphinx-autobuild $(DOCS_DIR)/source $(DOCS_DIR)/build/html
 
+make install-cython:
+	python setup.py build_ext --inplace
 # Run ruff linter
 lint:
 	ruff check $(SRC_DIR)
