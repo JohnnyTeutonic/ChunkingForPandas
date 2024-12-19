@@ -1,10 +1,6 @@
-# cython: language_level=3
-# cython: boundscheck=False
-# cython: wraparound=False
-# cython: nonecheck=False
-from .optimized.nb_chunks import chunk_array_nb, calculate_chunk_sizes
+from chunking_pandas.optimized.nb_chunks import chunk_array_nb, calculate_chunk_sizes
 try:
-    from .optimized.cy_chunks import chunk_array_cy
+    from chunking_pandas.optimized.cy_chunks import chunk_array_cy
 except ImportError:
     chunk_array_cy = None
 
@@ -198,16 +194,25 @@ class ChunkingExperiment:
 
     def _optimize_chunks(self, data: Union[pd.DataFrame, np.ndarray]) -> List[Union[pd.DataFrame, np.ndarray]]:
         """Choose the best optimization method based on data type and backend."""
-        if not self.use_optimized:
+        if hasattr(self, "use_optimized") and not self.use_optimized:
             return self._chunk_default(data)
 
-        if isinstance(data, np.ndarray):
+        if hasattr(self, "optimization_backend") and isinstance(data, np.ndarray):
             if self.optimization_backend == 'cython' and chunk_array_cy is not None:
                 return chunk_array_cy(data, self.n_chunks)
             elif self.optimization_backend in ['numba', 'auto']:
                 return chunk_array_nb(data, self.n_chunks)
         
         return self._chunk_default(data)
+    
+    def _chunk_default(self, data: Union[pd.DataFrame, np.ndarray]) -> List[Union[pd.DataFrame, np.ndarray]]:
+        """Default chunking method when optimizations are not used."""
+        if isinstance(data, np.ndarray):
+            chunk_size = max(1, data.shape[0] // self.n_chunks)
+            return [data[i:i + chunk_size] for i in range(0, data.shape[0], chunk_size)]
+        else:  # DataFrame
+            chunk_size = max(1, len(data) // self.n_chunks)
+            return [data.iloc[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
 
     def process_chunks(self, strategy: ChunkingStrategy) -> Union[List[pd.DataFrame], List[np.ndarray]]:
         """Process input data into chunks with parallel support and performance monitoring."""
@@ -316,3 +321,12 @@ class ChunkingExperiment:
         import psutil
         process = psutil.Process()
         return process.memory_info().rss / 1024 / 1024
+
+    def _chunk_default(self, data: Union[pd.DataFrame, np.ndarray]) -> List[Union[pd.DataFrame, np.ndarray]]:
+        """Default chunking method when optimizations are not used."""
+        if isinstance(data, np.ndarray):
+            chunk_size = max(1, data.shape[0] // self.n_chunks)
+            return [data[i:i + chunk_size] for i in range(0, data.shape[0], chunk_size)]
+        else:  # DataFrame
+            chunk_size = max(1, len(data) // self.n_chunks)
+            return [data.iloc[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
