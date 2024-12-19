@@ -194,14 +194,30 @@ class ChunkingExperiment:
 
     def _optimize_chunks(self, data: Union[pd.DataFrame, np.ndarray]) -> List[Union[pd.DataFrame, np.ndarray]]:
         """Choose the best optimization method based on data type and backend."""
-        if hasattr(self, "use_optimized") and not self.use_optimized:
-            return self._chunk_default(data)
+        try:
+            if not hasattr(self, "use_optimized") or not self.use_optimized:
+                return self._chunk_default(data)
 
-        if hasattr(self, "optimization_backend") and isinstance(data, np.ndarray):
-            if self.optimization_backend == 'cython' and chunk_array_cy is not None:
-                return chunk_array_cy(data, self.n_chunks)
-            elif self.optimization_backend in ['numba', 'auto']:
-                return chunk_array_nb(data, self.n_chunks)
+            if not isinstance(data, np.ndarray):
+                return self._chunk_default(data)
+
+            if hasattr(self, "optimization_backend"):
+                if self.optimization_backend == 'cython' and chunk_array_cy is not None:
+                    try:
+                        result = chunk_array_cy(data, self.n_chunks)
+                        if result and len(result) > 0:
+                            return result
+                    except:
+                        logger.warning("Cython optimization failed, falling back to default")
+                elif self.optimization_backend in ['numba', 'auto']:
+                    try:
+                        result = chunk_array_nb(data, self.n_chunks)
+                        if result and len(result) > 0:
+                            return result
+                    except:
+                        logger.warning("Numba optimization failed, falling back to default")
+        except Exception as e:
+            logger.warning(f"Optimization failed: {str(e)}, falling back to default")
         
         return self._chunk_default(data)
     
