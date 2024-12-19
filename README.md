@@ -75,7 +75,7 @@ launch_interface()
 
 ## Features
 
-- Multiple chunking strategies (rows, columns, tokens)
+- Multiple chunking strategies (rows, columns, tokens, blocks, parallel strategies)
 - Support for CSV, JSON, Numpy and Parquet files
 - Web interface using Gradio
 - Comprehensive test suite
