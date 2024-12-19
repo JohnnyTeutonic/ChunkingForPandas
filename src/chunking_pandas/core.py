@@ -1,3 +1,13 @@
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+# cython: nonecheck=False
+from .optimized.nb_chunks import chunk_array_nb, calculate_chunk_sizes
+try:
+    from .optimized.cy_chunks import chunk_array_cy
+except ImportError:
+    chunk_array_cy = None
+
 from enum import Enum
 import logging
 import pandas as pd
@@ -47,7 +57,9 @@ class ChunkingExperiment:
                  chunking_strategy: str = "rows",
                  save_chunks: bool = False,
                  n_workers: Optional[int] = None,
-                 monitor_performance: bool = False):
+                 monitor_performance: bool = False,
+                 use_optimized: bool = True,
+                 optimization_backend: str = 'auto'):
         """Initialize ChunkingExperiment with specified file format."""
         if n_workers is not None and n_workers <= 0:
             raise ValueError("Number of workers must be positive")
@@ -86,6 +98,8 @@ class ChunkingExperiment:
         
         self.monitor_performance = monitor_performance
         self.metrics: Dict[str, ChunkingMetrics] = {}
+        self.use_optimized = use_optimized
+        self.optimization_backend = optimization_backend
 
     def _read_input_file(self) -> Union[pd.DataFrame, np.ndarray]:
         """Read input file based on file format."""
@@ -182,6 +196,19 @@ class ChunkingExperiment:
             case _:
                 raise ValueError(f"Unsupported chunking strategy for NumPy arrays: {strategy}")
 
+    def _optimize_chunks(self, data: Union[pd.DataFrame, np.ndarray]) -> List[Union[pd.DataFrame, np.ndarray]]:
+        """Choose the best optimization method based on data type and backend."""
+        if not self.use_optimized:
+            return self._chunk_default(data)
+
+        if isinstance(data, np.ndarray):
+            if self.optimization_backend == 'cython' and chunk_array_cy is not None:
+                return chunk_array_cy(data, self.n_chunks)
+            elif self.optimization_backend in ['numba', 'auto']:
+                return chunk_array_nb(data, self.n_chunks)
+        
+        return self._chunk_default(data)
+
     def process_chunks(self, strategy: ChunkingStrategy) -> Union[List[pd.DataFrame], List[np.ndarray]]:
         """Process input data into chunks with parallel support and performance monitoring."""
         start_time = time.time() if hasattr(self, "monitor_performance") and self.monitor_performance else None
@@ -193,7 +220,7 @@ class ChunkingExperiment:
         if strategy in [ChunkingStrategy.PARALLEL_ROWS, ChunkingStrategy.PARALLEL_BLOCKS, ChunkingStrategy.DYNAMIC]:
             chunks = self._chunk_parallel(data, strategy)
         elif is_numpy:
-            chunks = self._chunk_numpy_array(data, strategy)
+            chunks = self._optimize_chunks(data)
         else:
             # Process pandas DataFrame chunks
             chunks = []

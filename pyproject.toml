@@ -41,6 +41,11 @@ docs = [
     "sphinx-rtd-theme>=1.0",
 ]
 
+optimized = [
+    "cython>=0.29.0",
+    "numba>=0.53.0",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/JohnnyTeutonic/ChunkingForPandas"
 "Bug Tracker" = "https://github.com/JohnnyTeutonic/ChunkingForPandas/issues" 
