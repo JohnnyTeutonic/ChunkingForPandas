@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List
-from core import ChunkingExperiment, ChunkingStrategy, FileFormat
+from chunking_pandas.core import ChunkingExperiment, ChunkingStrategy, FileFormat
 
 def run_benchmark(input_file: str, output_file: str,
                  strategies: List[ChunkingStrategy] = None,

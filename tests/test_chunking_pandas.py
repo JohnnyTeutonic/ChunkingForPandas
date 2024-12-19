@@ -15,6 +15,11 @@ def sample_data():
     })
 
 @pytest.fixture
+def sample_data_default():
+    """Create sample data for default purposes."""
+    return pd.DataFrame({'A': [1, 2, 3]})
+
+@pytest.fixture
 def sample_numpy_data():
     """Create sample numpy data for testing."""
     return np.random.rand(100, 4)
@@ -61,11 +66,11 @@ def test_file_format_enum():
     assert FileFormat.NUMPY.value == "numpy"
 
 # Test Initialization
-def test_init_default_params(tmp_path):
+def test_init_default_params(tmp_path, sample_data_default):
     """Test default initialization parameters."""
     # Create a temporary CSV file
     test_file = tmp_path / "test.csv"
-    pd.DataFrame({'A': [1, 2, 3]}).to_csv(test_file, index=False)
+    sample_data_default.to_csv(test_file, index=False)
     
     experiment = ChunkingExperiment(str(test_file), "output.csv", auto_run=False)
     assert experiment.file_format == FileFormat.CSV
@@ -89,7 +94,7 @@ def test_init_custom_params(test_files):
     assert experiment.n_workers == 2
 
 # Test File Format Validation
-def test_file_format_validation(tmp_path):
+def test_file_format_validation(tmp_path, sample_data_default):
     """Test validation of file formats."""
     # Create test files with correct extensions
     csv_file = tmp_path / "test.csv"
@@ -98,11 +103,10 @@ def test_file_format_validation(tmp_path):
     numpy_file = tmp_path / "test.npy"
     
     # Create sample data and save in different formats
-    df = pd.DataFrame({'A': [1, 2, 3]})
-    df.to_csv(csv_file, index=False)
-    df.to_json(json_file)
-    df.to_parquet(parquet_file)
-    np.save(numpy_file, df.to_numpy())
+    sample_data_default.to_csv(csv_file, index=False)
+    sample_data_default.to_json(json_file)
+    sample_data_default.to_parquet(parquet_file)
+    np.save(numpy_file, sample_data_default.to_numpy())
     
     # Test each format
     format_files = {
@@ -202,11 +206,11 @@ def test_numpy_1d_array_limitations(sample_1d_numpy_data, tmp_path):
             experiment.process_chunks(strategy)
 
 # Test Memory Management
-def test_optimal_chunk_size(tmp_path):
+def test_optimal_chunk_size(tmp_path, sample_data_default):
     """Test optimal chunk size calculation."""
     # Create a temporary CSV file
     test_file = tmp_path / "test.csv"
-    pd.DataFrame({'A': [1, 2, 3]}).to_csv(test_file, index=False)
+    sample_data_default.to_csv(test_file, index=False)
     
     experiment = ChunkingExperiment(str(test_file), "output.csv", auto_run=False)
     sizes = [100, 1000, 10000]
@@ -216,11 +220,11 @@ def test_optimal_chunk_size(tmp_path):
         assert chunk_size <= size
 
 # Test Error Handling
-def test_error_handling(tmp_path):
+def test_error_handling(tmp_path, sample_data_default):
     """Test error handling for invalid inputs."""
     # Create a valid CSV file for testing
     valid_csv = tmp_path / "test.csv"
-    pd.DataFrame({'A': [1, 2, 3]}).to_csv(valid_csv, index=False)
+    sample_data_default.to_csv(valid_csv, index=False)
     
     # Test invalid chunking strategy
     with pytest.raises(ValueError):
@@ -268,11 +272,11 @@ def test_save_chunks(test_files, tmp_path):
         assert chunk_file.exists()
 
 # Test Logging
-def test_logging(tmp_path, caplog):
+def test_logging(tmp_path, caplog, sample_data_default):
     """Test logging functionality."""
     # Create a temporary CSV file
     test_file = tmp_path / "test.csv"
-    pd.DataFrame({'A': [1, 2, 3]}).to_csv(test_file, index=False)
+    sample_data_default.to_csv(test_file, index=False)
     
     experiment = ChunkingExperiment(str(test_file), "output.csv", save_chunks=False, auto_run=False)
     assert "Chunks will not be saved to disk" in caplog.text

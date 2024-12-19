@@ -4,9 +4,9 @@ python cli.py benchmark tests/data/sample.csv --n-chunks 3 --save-chunks
 """
 import click
 import pandas as pd
-from core import ChunkingExperiment, ChunkingStrategy, FileFormat
-from visualization import plot_performance_comparison
-from benchmark import run_benchmark
+from chunking_pandas.core import ChunkingExperiment, ChunkingStrategy, FileFormat
+from chunking_pandas.visualization import plot_performance_comparison
+from chunking_pandas.benchmark import run_benchmark
 
 @click.group()
 def cli():

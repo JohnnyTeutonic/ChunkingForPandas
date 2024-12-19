@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Dict
-from core import ChunkingMetrics
+from chunking_pandas.core import ChunkingMetrics
 
 def plot_performance_comparison(metrics: Dict[str, ChunkingMetrics]):
     """Plot performance metrics comparison."""

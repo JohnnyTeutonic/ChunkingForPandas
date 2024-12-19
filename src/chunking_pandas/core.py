@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass
 from typing import Dict, Any
 
-from utils.logging import setup_logging
+from .utils.logging import setup_logging
 setup_logging()
 
 logger = logging.getLogger(__name__)
